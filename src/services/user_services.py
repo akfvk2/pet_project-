@@ -1,23 +1,47 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from models import schemas
-from repositories import repositories
+from models.shemas import users_s
 from repositories.repositories import UserRepository
-
+from exceptions import NotFoundException
+from models import users
 
 class UserService:
-    @staticmethod
-    async def create_user(session: AsyncSession, user_in: schemas.UserCreate):
-        return await UserRepository.create(session, user_in)
+    def __init__(self, session: AsyncSession):
+        self.session = session
 
-    @staticmethod
-    async def get_user_by_id(session: AsyncSession, user_id: int):
-        return await UserRepository.get_by_id(session, user_id)
 
-    @staticmethod
-    async def update_user(session: AsyncSession, user_id: int, user_in: schemas.UserUpdate):
-        return await UserRepository.update(session, user_id, user_in)
 
-    @staticmethod
-    async def delete_user(session: AsyncSession, user_id: int):
-        return await UserRepository.delete(session, user_id)
+
+    async def create_user(self, user_in: users_s.UserCreate):
+        user_repo = UserRepository(self.session)
+        users_entity = users.UserModel(**user_in.model_dump())
+        db_user = await user_repo.create(users_entity)
+        return  users_s.UserRead.model_validate(db_user)
+
+
+    async def get_user_by_id(self, user_id: int):
+        user_repo = UserRepository(self.session)
+        user_entity = await user_repo.get_by_id(user_id)
+        if not user_entity:
+            raise NotFoundException("User not found")
+        return users_s.UserRead.model_validate(user_entity)
+
+
+    async def update_user(self, user_id: int, user_in: users_s.UserUpdate):
+        users_repo = UserRepository(self.session)
+        users_entity = await users_repo.get_by_id(user_id)
+        if not users_entity:
+            raise NotFoundException("User not found")
+        updated_data = user_in.model_dump(exclude_unset=True)
+        for key, value in updated_data.items():
+            setattr(users_entity, key, value)
+        updated_user = await users_repo.update(users_entity)
+        return users_s.UserRead.model_validate(updated_user)
+
+
+    async def delete_user(self, user_id: int):
+        user_repo = UserRepository(self.session)
+        users_entity = await user_repo.get_by_id(user_id)
+        if not users_entity:
+            raise NotFoundException("User not found")
+        await user_repo.delete(users_entity)
+        return True
