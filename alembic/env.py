@@ -7,10 +7,14 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 from src.models.users import Base
+from src.config import Settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+
+settings = Settings()
+config.set_main_option("sqlalchemy.url", str(settings.postgres_url))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -80,6 +84,11 @@ async def run_async_migrations() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
+    import sys
+    
+    # Fix for Windows and asyncpg
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
     asyncio.run(run_async_migrations())
 

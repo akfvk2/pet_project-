@@ -1,10 +1,9 @@
-
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db import get_session
-from models.shemas import students_s
-from services import StudentService
+from src.db import get_session
+from src.models.shemas import students_s
+from src.services.student_services import StudentService
 
 
 router = APIRouter()
@@ -33,4 +32,3 @@ async def update_student(student_id: int, student_in: students_s.StudentUpdate, 
 @router.delete("/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_student(student_id: int, session: AsyncSession = Depends(get_session)):
     await StudentService.delete_student(session, student_id)
-

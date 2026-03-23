@@ -1,183 +1,61 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.testing.pickleable import User
 
-from models import users
+from src.models import users
+from  typing import TypeVar, Generic, Type
+from src.models.users import Base
 
+ModelType = TypeVar("ModelType", bound=Base)
 
-#User
-class UserRepository:
-    def __init__(self, session: AsyncSession):
-        self.session = session
-
-    async def create(self, user: users.UserModel ):
-        self.session.add(user)
-        await self.session.refresh(user)
-        return user
-
-
-    async def get_by_id(self, user_id: int):
-        result = await self.session.execute(select(users.UserModel).where(users.UserModel.id == user_id))
-        return result.scalar_one_or_none()
-
-
-    async def update(self, user: users.UserModel ):
-        self.session.add(user)
-        await self.session.flush()
-        await self.session.refresh(user)
-        return user
-
-
-    async def delete(self, user: users.UserModel):
-        await self.session.delete(user)
-        await self.session.flush()
-        return True
-
-#Profile
-
-class ProfileRepository:
-    def __init__(self, session: AsyncSession):
+class BaseRepository(Generic[ModelType]):
+    def __init__(self, model:Type[ModelType], session: AsyncSession):
+        self.model = model
         self.session = session
 
 
-    async def create(self, profile: users.ProfileModel):
-        self.session.add(profile)
-        await self.session.refresh(profile)
-        return profile
+    async def create(self, obj: ModelType) -> ModelType:
+        self.session.add(obj)
+        await self.session.flush()
+        await self.session.refresh(obj)
+        return obj
 
-
-    async def get_by_id(self, profile_id: int):
-        result = await self.session.execute(select(users.ProfileModel).where(users.ProfileModel.id == profile_id))
+    async def get_by_id(self, obj_id: int) -> ModelType | None:
+        result = await self.session.execute(select(self.model).where(getattr(self.model.id == obj_id)))
         return result.scalar_one_or_none()
 
-
-    async def update(self,  profile: users.ProfileModel):
-        self.session.add(profile)
-        await self.session.refresh(profile)
-        return profile
-
-
-    async def delete(self, profile: users.ProfileModel):
-        await self.session.delete(profile)
+    async def update(self, obj: ModelType) -> ModelType:
         await self.session.flush()
-        return True
+        await self.session.refresh(obj)
+        return obj
 
-
-class AuthorRepository:
-    def __init__(self, session: AsyncSession):
-        self.session = session
-
-
-    async def create(self, author: users.Author ):
-        self.session.add(author)
-        await self.session.flush()
-        await self.session.refresh(author)
-        return author
-
-
-    async def get_by_id(self, author_id: int ):
-        result = await self.session.execute(select(users.Author).where(users.Author.id == author_id))
-        return result.scalar_one_or_none()
-
-
-    async def update(self, author: users.Author ):
-        self.session.add(author)
-        await self.session.flush()
-        await self.session.refresh(author)
-        return author
-
-
-    async def delete(self, author: users.Author ):
-        await self.session.delete(author)
-        await self.session.flush()
-        return True
-
-
-class BookRepository:
-    def __init__(self, session: AsyncSession):
-        self.session = session
-
-
-    async def create(self, book: users.Book):
-        self.session.add(book)
-        await self.session.flush()
-        await self.session.refresh(book)
-        return book
-
-
-    async def get_by_id(self, book_id: int):
-        result = await self.session.execute(select(users.Book).where(users.Book.id == book_id))
-        return result.scalar_one_or_none()
-
-
-    async def update(self, book: users.Book):
-        self.session.add(book)
-        await self.session.flush()
-        await self.session.refresh(book)
-        return book
-
-
-    async def delete(self, book: users.Book):
-        await self.session.delete(book)
-        await self.session.flush()
-        return True
-
-
-class StudentRepository:
-    def __init__(self, session: AsyncSession):
-        self.session = session
-
-
-    async def create(self, student: users.Students):
-        self.session.add(student)
-        await self.session.flush()
-        await self.session.refresh(student)
-        return student
-
-
-    async def get_by_id(self, student_id: int):
-        result = await self.session.execute(select(users.Students).where(users.Students.id == student_id))
-        return result.scalar_one_or_none()
-
-
-    async def update(self, student: users.Students):
-        self.session.add(student)
-        await self.session.flush()
-        await self.session.refresh(student)
-        return student
-
-
-    async def delete(self, student: users.Students):
-        await self.session.delete(student)
+    async def delete(self, obj: ModelType) -> bool:
+        await self.session.delete(obj)
         await self.session.flush()
         return True
 
 
 
-class CourseRepository:
+class UserRepository(BaseRepository[users.UserModel]):
     def __init__(self, session: AsyncSession):
-        self.session = session
+        super().__init__(users.UserModel, session)
 
+class ProfileRepository(BaseRepository[users.ProfileModel]):
+    def __init__(self, session: AsyncSession):
+        super().__init__(users.ProfileModel, session)
 
-    async def create(self, course: users.Course):
-        self.session.add(course)
-        await self.session.flush()
-        await self.session.refresh(course)
-        return course
+class AuthorRepository(BaseRepository[users.Author]):
+    def __init__(self, session: AsyncSession):
+        super().__init__(users.Author, session)
 
+class BookRepository(BaseRepository[users.Book]):
+    def __init__(self, session: AsyncSession):
+        super().__init__(users.Book, session)
 
-    async def get_by_id(self, course_id: int):
-        result = await self.session.execute(select(users.Course).where(users.Course.id == course_id))
-        return result.scalar_one_or_none()
+class StudentRepository(BaseRepository[users.Students]):
+    def __init__(self, session: AsyncSession):
+        super().__init__(users.Students, session)
 
-
-    async def update(self, course: users.Course):
-        self.session.add(course)
-        await self.session.flush()
-        await self.session.refresh(course)
-        return course
-
-
-    async def delete(self, course: users.Course):
-        await self.session.delete(course)
-        await self.session.flush()
-        return True
+class CourseRepository(BaseRepository[users.Course]):
+    def __init__(self, session: AsyncSession):
+        super().__init__(users.Course, session)

@@ -1,8 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from models.shemas import authors_s
-from models import users
-from repositories.repositories import AuthorRepository
-from exceptions import NotFoundException
+from src.models.shemas import authors_s
+from src.models import users
+from src.repositories.repositories import AuthorRepository
+from src.exceptions import NotFoundException
 
 
 class AuthorService:

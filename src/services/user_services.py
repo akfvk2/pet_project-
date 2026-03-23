@@ -1,8 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from models.shemas import users_s
-from repositories.repositories import UserRepository
-from exceptions import NotFoundException
-from models import users
+from src.models.shemas import users_s
+from src.repositories.repositories import UserRepository
+from src.exceptions import NotFoundException
+from src.models import users
 
 class UserService:
     def __init__(self, session: AsyncSession):

@@ -2,19 +2,20 @@ from fastapi import FastAPI
 from fastapi.responses import UJSONResponse
 from starlette.middleware.cors import CORSMiddleware
 from src.healthcheck.router import router
+from contextlib import asynccontextmanager
+from src.routers.v1.router import api_v1_router
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+
 
 def get_app() -> FastAPI:
-    """
-    Get FastAPI application.
-
-    This is the main constructor of an application.
-
-    :return: application.
-    """
     app = FastAPI(
         docs_url='/docs',
         openapi_url='/openapi.json',
         default_response_class=UJSONResponse,
+        lifespan=lifespan,
     )
 
     app.add_middleware(
@@ -24,6 +25,5 @@ def get_app() -> FastAPI:
         allow_methods=['*'],
         allow_headers=['*'],
     )
-    app.include_router(router)
-
+    app.include_router(api_v1_router)
     return app
