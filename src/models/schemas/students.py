@@ -1,18 +1,12 @@
 from typing import Optional, List
 from pydantic import BaseModel, ConfigDict
-
-class CourseBase(BaseModel):
-    title: str
-
-
-class CourseRead(CourseBase):
-    id: int
-
-    model_config = ConfigDict(from_attributes=True)
-
+from src.models.schemas.courses import CourseRead
 
 class StudentBase(BaseModel):
     name: str
+    age: Optional[int] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
 
 
 class StudentCreate(StudentBase):

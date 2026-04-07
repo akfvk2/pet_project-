@@ -1,12 +1,4 @@
-from typing import Any
-
-
-class AppException(Exception):
-    def __init__(self, message: str, status_code: int = 400, extra: Any = None):
-        self.message = message
-        self.status_code = status_code
-        self.extra = extra
-
+from src.exceptions.base import AppException
 
 class NotFoundException(AppException):
     def __init__(self, message: str = "Not found"):

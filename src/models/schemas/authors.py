@@ -1,19 +1,13 @@
 from typing import Optional, List
 from pydantic import BaseModel, ConfigDict
-
-
-class BookBase(BaseModel):
-    title: str
-
-
-class BookRead(BookBase):
-    id: int
-
-    model_config = ConfigDict(from_attributes=True)
-
+from src.models.schemas.books import BookBase, BookRead
+from datetime import date
 
 class AuthorBase(BaseModel):
     name: str
+    biography: Optional[str] = None
+    birth_date: Optional[date] = None
+    nationality: Optional[str] = None
 
 
 class AuthorCreate(AuthorBase):

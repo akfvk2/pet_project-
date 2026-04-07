@@ -1,5 +1,5 @@
-from src.services.user_services import UserService
-from src.services.student_services import StudentService
-from src.services.author_services import AuthorService
+from src.services.user_service import UserService
+from src.services.student_service import StudentService
+from src.services.author_service import AuthorService
 
 __all__ = ["UserService", "AuthorService", "StudentService"]
