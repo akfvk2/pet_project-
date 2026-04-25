@@ -1,6 +1,6 @@
 from typing import Any
 from fastapi import Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import UJSONResponse
 
 
 class AppException(Exception):
@@ -11,7 +11,7 @@ class AppException(Exception):
 
 
 async def app_exception_handler(request: Request, exc: AppException):
-    return JSONResponse(
+    return UJSONResponse(
         status_code=exc.status_code,
         content={
             "message": exc.message,

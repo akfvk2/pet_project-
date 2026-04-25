@@ -7,16 +7,24 @@ class CourseBase(BaseModel):
     description: Optional[str] = None
     duration_hours: Optional[int] = None
 
-    @field_validator('title', 'description')
+    @field_validator('title')
     @classmethod
-    def validate_string_filed(cls, value: Optional[str]) -> Optional[str]:
+    def validate_string_field(cls, value: str) -> str:
+        cleaned_value = value.strip()
+        if not cleaned_value:
+            raise ValueError('Поле не может быть пустым или состоять только из пробелов')
+        if len(cleaned_value) < 2:
+            raise ValueError('Укажите реальный заголовок')
+        return cleaned_value
+
+    @field_validator( 'description')
+    @classmethod
+    def validate_string_field_op(cls, value: Optional[str]) -> Optional[str]:
         if value is None:
             return value
         cleaned_value = value.strip()
-        if not cleaned_value:
-            raise ValueError('username or email or phone is required')
         if len(cleaned_value) < 2:
-            raise ValueError('username or email or phone is required')
+            raise ValueError('Укажите реальное описание')
         return cleaned_value
 
     @field_validator('duration_hours')

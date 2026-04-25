@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from schemas.users import UserCreate, UserUpdate, UserRead
 from src.repositories.user import UserRepository
 from src.exceptions.not_found import NotFoundException
-from src.models import base_model
+from src.models import user , profile
 from uuid import UUID
 import logging
 
@@ -26,14 +26,12 @@ class UserService:
     async def create_user(self, user_in: UserCreate) -> UserRead:
         user_data = user_in.model_dump(exclude={"profile"})
         profile_data = user_in.profile
-        user_entity = base_model.UserModel(**user_data)
-        if profile_data is not None:
-            profile_entity = base_model.ProfileModel(**profile_data.model_dump())
-            user_entity.profile = profile_entity
+        user_entity = user.UserModel(**user_data)
+        profile_entity = profile.ProfileModel(**profile_data.model_dump())
+        user_entity.profile = profile_entity
         db_user = await self.students_repo.create(user_entity)
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(db_user)
-
         return UserRead.model_validate(db_user)
 
     async def get_user_by_id(self, user_id: UUID):

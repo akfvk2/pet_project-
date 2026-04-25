@@ -16,13 +16,16 @@ class BaseRepository(Generic[ModelType]):
         return obj
 
     async def get_by_id(self, obj_id: UUID) -> ModelType | None:
-        result = await self.session.execute(select(self.model).where(getattr(self.model.id == obj_id)))
+        stmt = select(self.model).where(
+            self.model.id == obj_id,
+            self.model.is_deleted == False
+        )
+        result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
     async def update(self, obj: ModelType) -> ModelType:
-        await self.session.refresh(obj)
         return obj
 
     async def delete(self, obj: ModelType) -> bool:
-        await self.session.delete(obj)
+        obj.is_deleted = True
         return True

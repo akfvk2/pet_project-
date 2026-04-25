@@ -7,16 +7,24 @@ class BookBase(BaseModel):
     page_count: Optional[int] = None
     genre: Optional[str] = None
 
-    @field_validator('title', 'genre')
+    @field_validator('title')
     @classmethod
-    def validate_string_filed(cls, value: Optional[str]) -> Optional[str]:
+    def validate_string_field(cls, value: str) -> str:
+        cleaned_value = value.strip()
+        if not cleaned_value:
+            raise ValueError('Поле не может быть пустым или состоять только из пробелов')
+        if len(cleaned_value) < 2:
+            raise ValueError('Укажите реальный жанр или заголовок')
+        return cleaned_value
+
+    @field_validator( 'genre')
+    @classmethod
+    def validate_string_field_op(cls, value: Optional[str]) -> Optional[str]:
         if value is None:
             return value
         cleaned_value = value.strip()
-        if not cleaned_value:
-            raise ValueError('username or email or phone is required')
         if len(cleaned_value) < 2:
-            raise ValueError('username or email or phone is required')
+            raise ValueError('Укажите реальный жанр или заголовок')
         return cleaned_value
 
     @field_validator('page_count')

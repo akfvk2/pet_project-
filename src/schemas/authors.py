@@ -10,16 +10,24 @@ class AuthorBase(BaseModel):
     birth_date: Optional[date] = None
     nationality: Optional[str] = None
 
-    @field_validator('name', 'biography', 'nationality')
+    @field_validator('name')
     @classmethod
-    def validate_string_filed(cls, value: Optional[str]) -> Optional[str]:
+    def validate_string_field(cls, value: str) -> str:
+        cleaned_value = value.strip()
+        if not cleaned_value:
+            raise ValueError('username is required')
+        if len(cleaned_value) < 2:
+            raise ValueError('username is required')
+        return cleaned_value
+
+    @field_validator( 'biography', 'nationality')
+    @classmethod
+    def validate_string_field_op(cls, value: Optional[str]) -> Optional[str]:
         if value is None:
             return value
         cleaned_value = value.strip()
-        if not cleaned_value:
-            raise ValueError('username or email or phone is required')
         if len(cleaned_value) < 2:
-            raise ValueError('username or email or phone is required')
+            raise ValueError('email or phone is required')
         return cleaned_value
 
 

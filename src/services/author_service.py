@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from schemas import authors
-from src.models import base_model
+from src.models import author, book
 from src.repositories.author import AuthorRepository
 from uuid import UUID
 from src.exceptions.not_found import NotFoundException
@@ -26,9 +26,9 @@ class AuthorService:
     async def create_author(self, author_in: authors.AuthorCreate):
         author_data = author_in.model_dump()
         books_data = author_data.pop("books", None)
-        author_entity = base_model.Author(**author_data)
+        author_entity = author.Author(**author_data)
         if books_data:
-            author_entity.books = [base_model.Book(**book_item) for book_item in books_data]
+            author_entity.books = [book.Book(**book_item) for book_item in books_data]
         db_author = await self.authors_repo.create(author_entity)
         return authors.AuthorRead.model_validate(db_author)
 

@@ -2,9 +2,11 @@ from datetime import datetime
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid import UUID, uuid4
+from typing import TYPE_CHECKING
 from src.models.base_model import Base
-from src.models.book import Book
 
+if TYPE_CHECKING:
+    from src.models.book import Book
 
 class Author(Base):
     __tablename__ = 'authors'

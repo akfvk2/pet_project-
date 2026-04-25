@@ -1,8 +1,8 @@
-from src.repositories.repositories import BaseRepository
-from src.models import base_model
+from src.repositories.BaseRepository import BaseRepository
+from src.models.student import Students
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
-class StudentRepository(BaseRepository[base_model.Students]):
+class StudentRepository(BaseRepository[Students]):
     def __init__(self, session: AsyncSession):
-        super().__init__(base_model.Students, session)
+        super().__init__(Students, session)

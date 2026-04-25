@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.repositories.student import StudentRepository
 from src.exceptions.not_found import NotFoundException
-from src.models import base_model
+from src.models import student, course
 from schemas import students
 from uuid import UUID
 import logging
@@ -20,15 +20,12 @@ class StudentService:
                 f"Entity 'Student' with id {student_id} not found",
                 extra={"student_id": student_id}
             )
-            raise NotFoundException("Student not found")
+            raise NotFoundException(f"Student with id {student_id} not found")
         return student_entity
 
     async def create_student(self, student_in: students.StudentCreate):
         student_data = student_in.model_dump()
-        course_id = student_data.pop("courses", None)
-        students_entity = base_model.Students(**student_data)
-        if course_id and len(course_id) > 0:
-            students_entity.course_id = course_id[0]
+        students_entity = student.Students(**student_data)
         db_student = await self.students_repo.create(students_entity)
         return await students.StudentRead.model_validate(db_student)
 

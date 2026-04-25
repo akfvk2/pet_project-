@@ -2,9 +2,11 @@ import sqlalchemy as sa
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid import UUID, uuid4
+from typing import TYPE_CHECKING
 from src.models.base_model import Base
-from src.models.course import Course
 
+if TYPE_CHECKING:
+    from src.models.course import Course
 
 class Students(Base):
     __tablename__ = 'students'

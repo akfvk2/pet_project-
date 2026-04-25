@@ -12,9 +12,9 @@ class ProfileBase(BaseModel):
             return value
         cleaned_value = value.strip()
         if not cleaned_value:
-            raise ValueError('username or email or phone is required')
+            raise ValueError('Поле не может быть пустым или состоять только из пробелов')
         if len(cleaned_value) < 2:
-            raise ValueError('username or email or phone is required')
+            raise ValueError('Укажите реальныое bio')
         return cleaned_value
 
 class ProfileRead(ProfileBase):
