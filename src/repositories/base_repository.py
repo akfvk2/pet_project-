@@ -16,12 +16,8 @@ class BaseRepository(Generic[ModelType]):
         return obj
 
     async def get_by_id(self, obj_id: UUID) -> ModelType | None:
-        stmt = select(self.model).where(
-            self.model.id == obj_id,
-            self.model.is_deleted == False
-        )
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
+        entity = await self.session.get(self.model, obj_id)
+        return entity
 
     async def update(self, obj: ModelType) -> ModelType:
         return obj
