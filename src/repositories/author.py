@@ -1,4 +1,4 @@
-from src.repositories.BaseRepository import BaseRepository
+from src.repositories.base_repository import BaseRepository
 from src.models.author import Author
 from sqlalchemy.ext.asyncio import AsyncSession
 

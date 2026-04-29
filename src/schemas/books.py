@@ -12,9 +12,9 @@ class BookBase(BaseModel):
     def validate_string_field(cls, value: str) -> str:
         cleaned_value = value.strip()
         if not cleaned_value:
-            raise ValueError('Поле не может быть пустым или состоять только из пробелов')
+            raise ValueError('Title cannot be empty')
         if len(cleaned_value) < 2:
-            raise ValueError('Укажите реальный жанр или заголовок')
+            raise ValueError('Please provide a real title')
         return cleaned_value
 
     @field_validator( 'genre')
@@ -24,7 +24,7 @@ class BookBase(BaseModel):
             return value
         cleaned_value = value.strip()
         if len(cleaned_value) < 2:
-            raise ValueError('Укажите реальный жанр или заголовок')
+            raise ValueError('The genre length must be at least 2 characters')
         return cleaned_value
 
     @field_validator('page_count')
@@ -33,9 +33,9 @@ class BookBase(BaseModel):
         if value is None:
             return value
         if value <= 0:
-            raise ValueError('Продолжительность должена быть больше нуля')
-        if value > 100:
-            raise ValueError('Укажите реальную продолжительность')
+            raise ValueError('Page count must be greater than zero')
+        if value > 1000:
+            raise ValueError('Page count is too large')
         return value
 
 class BookRead(BookBase):

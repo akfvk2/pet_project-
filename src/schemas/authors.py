@@ -15,9 +15,9 @@ class AuthorBase(BaseModel):
     def validate_string_field(cls, value: str) -> str:
         cleaned_value = value.strip()
         if not cleaned_value:
-            raise ValueError('username is required')
+            raise ValueError('name is required')
         if len(cleaned_value) < 2:
-            raise ValueError('username is required')
+            raise ValueError('name is required')
         return cleaned_value
 
     @field_validator( 'biography', 'nationality')
@@ -27,15 +27,15 @@ class AuthorBase(BaseModel):
             return value
         cleaned_value = value.strip()
         if len(cleaned_value) < 2:
-            raise ValueError('email or phone is required')
+            raise ValueError('Field must contain at least 2 characters')
         return cleaned_value
 
 
 class AuthorCreate(AuthorBase):
-    books: Optional[List[BookBase]] = None
+    pass
 
 class AuthorUpdate(AuthorBase):
-    books: Optional[List[BookBase]] = None
+    pass
 
 class AuthorRead(AuthorBase):
     id: UUID

@@ -17,9 +17,9 @@ class StudentBase(BaseModel):
             return value
         cleaned_value = value.strip()
         if not cleaned_value:
-            raise ValueError('Поле не может быть пустым или состоять только из пробелов')
+            raise ValueError('name is required')
         if len(cleaned_value) < 2:
-            raise ValueError('Укажите реальное имя')
+            raise ValueError('Name must be at least 2 characters')
         return cleaned_value
 
     @field_validator('phone')
@@ -29,7 +29,7 @@ class StudentBase(BaseModel):
             return value
         cleaned_phone = re.sub(r'[\s\-()]', '', value)
         if not re.match(r'^\+?\d{9,15}$', cleaned_phone):
-            raise ValueError("Неверный формат номера телефона")
+            raise ValueError("Invalid phone number format")
         return cleaned_phone
 
     @field_validator('age')
@@ -38,9 +38,9 @@ class StudentBase(BaseModel):
         if value is None:
             return value
         if value <= 0:
-            raise ValueError('Возраст должен быть больше нуля')
+            raise ValueError('Age must be greater than zero')
         if value > 100:
-            raise ValueError('Укажите реальный возраст')
+            raise ValueError('Age is too high')
         return value
 
 class StudentCreate(StudentBase):

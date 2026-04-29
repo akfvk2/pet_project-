@@ -12,9 +12,9 @@ class ProfileBase(BaseModel):
             return value
         cleaned_value = value.strip()
         if not cleaned_value:
-            raise ValueError('Поле не может быть пустым или состоять только из пробелов')
+            raise ValueError('Bio cannot be empty')
         if len(cleaned_value) < 2:
-            raise ValueError('Укажите реальныое bio')
+            raise ValueError('Bio must be at least 2 characters')
         return cleaned_value
 
 class ProfileRead(ProfileBase):

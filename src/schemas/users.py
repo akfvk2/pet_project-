@@ -18,9 +18,9 @@ def validate_string_filed(cls, value: Optional[str]) -> Optional[str]:
         return value
     cleaned_value = value.strip()
     if not cleaned_value:
-        raise ValueError('Поле не может быть пустым или состоять только из пробелов')
+        raise ValueError('username is required')
     if len(cleaned_value) < 2:
-        raise ValueError('Укажите реальный username')
+        raise ValueError('Username must be at least 2 characters')
     return cleaned_value
 
 
@@ -31,9 +31,9 @@ def validate_int(cls, value: Optional[int]) -> Optional[int]:
     if value is None:
         return value
     if value <= 0:
-        raise ValueError('Возраст должен быть больше нуля')
+        raise ValueError('Age must be greater than zero')
     if value > 100:
-        raise ValueError('Укажите реальный возраст')
+        raise ValueError('Age is too high')
     return value
 
 

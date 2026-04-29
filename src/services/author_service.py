@@ -24,11 +24,7 @@ class AuthorService:
         return author_entity
 
     async def create_author(self, author_in: authors.AuthorCreate):
-        author_data = author_in.model_dump()
-        books_data = author_data.pop("books", None)
-        author_entity = author.Author(**author_data)
-        if books_data:
-            author_entity.books = [book.Book(**book_item) for book_item in books_data]
+        author_entity = author.Author.from_schema(author_in)
         db_author = await self.authors_repo.create(author_entity)
         return authors.AuthorRead.model_validate(db_author)
 

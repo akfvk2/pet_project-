@@ -12,9 +12,9 @@ class CourseBase(BaseModel):
     def validate_string_field(cls, value: str) -> str:
         cleaned_value = value.strip()
         if not cleaned_value:
-            raise ValueError('Поле не может быть пустым или состоять только из пробелов')
+            raise ValueError('Title cannot be empty')
         if len(cleaned_value) < 2:
-            raise ValueError('Укажите реальный заголовок')
+            raise ValueError('Title is required')
         return cleaned_value
 
     @field_validator( 'description')
@@ -24,7 +24,7 @@ class CourseBase(BaseModel):
             return value
         cleaned_value = value.strip()
         if len(cleaned_value) < 2:
-            raise ValueError('Укажите реальное описание')
+            raise ValueError('Description must be at least 2 characters')
         return cleaned_value
 
     @field_validator('duration_hours')
@@ -33,9 +33,9 @@ class CourseBase(BaseModel):
         if value is None:
             return value
         if value <= 0:
-            raise ValueError('Продолжительность должена быть больше нуля')
-        if value > 100:
-            raise ValueError('Укажите реальную продолжительность')
+            raise ValueError('Duration must be greater than zero')
+        if value > 500:
+            raise ValueError('Duration cannot exceed 500 hours')
         return value
 
 class CourseRead(CourseBase):

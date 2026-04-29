@@ -5,6 +5,7 @@ from schemas import users
 from src.services.user_service import UserService
 from uuid import UUID
 
+
 router = APIRouter()
 
 @router.post("/", response_model=users.UserRead, status_code=status.HTTP_201_CREATED)
@@ -25,3 +26,4 @@ async def update_user(user_id: UUID, user_in: users.UserUpdate, session: AsyncSe
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(user_id: UUID, session: AsyncSession = Depends(get_session)):
     await UserService(session).delete_user(user_id)
+
