@@ -4,7 +4,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid import UUID, uuid4
 from typing import TYPE_CHECKING
 from src.models.base_model import Base
-from src.schemas.authors import AuthorCreate
+
 
 if TYPE_CHECKING:
     from src.models.book import Book
@@ -18,6 +18,3 @@ class Author(Base):
     nationality: Mapped[str] = mapped_column(sa.String())
     books: Mapped[list["Book"]] = relationship("Book", back_populates="author", cascade="all, delete-orphan", lazy="selectin")
 
-    @classmethod
-    def from_schema(cls, schema: AuthorCreate):
-        return cls(**schema.model_dump())

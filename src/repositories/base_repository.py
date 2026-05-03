@@ -20,6 +20,7 @@ class BaseRepository(Generic[ModelType]):
         return entity
 
     async def update(self, obj: ModelType) -> ModelType:
+        await self.session.refresh(obj)
         return obj
 
     async def delete(self, obj: ModelType) -> bool:

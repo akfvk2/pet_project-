@@ -25,7 +25,10 @@ class StudentService:
 
     async def create_student(self, student_in: students.StudentCreate):
         student_data = student_in.model_dump()
+        courses_ids = student_data.pop("courses", [])
         students_entity = student.Students(**student_data)
+        if courses_ids:
+            students_entity.course_id = courses_ids[0]
         db_student = await self.students_repo.create(students_entity)
         return await students.StudentRead.model_validate(db_student)
 
@@ -36,6 +39,10 @@ class StudentService:
     async def update_student(self, student_id: UUID, student_in: students.StudentUpdate):
         students_entity = await self._get_student_or_fail(student_id)
         update_data = student_in.model_dump(exclude_unset=True)
+        if 'courses' in update_data:
+            courses_ids = update_data.pop('courses')
+            if courses_ids:
+                students_entity.course_id = courses_ids[0]
         for key, value in update_data.items():
             setattr(students_entity, key, value)
         update_students = await self.students_repo.update(students_entity)

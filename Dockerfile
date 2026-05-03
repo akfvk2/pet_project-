@@ -7,9 +7,14 @@ ENV PYTHONUNBUFFERED=1 \
     POETRY_VIRTUALENVS_CREATE=1 \
     POETRY_CACHE_DIR=/tmp/poetry_cache
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-RUN pip install --no-cache-dir poetry
+RUN pip install --no-cache-dir poetry==$POETRY_VERSION
 
 COPY pyproject.toml poetry.lock* ./
 
@@ -26,11 +31,15 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-RUN useradd -m myuser && chown -R myuser:myuser /app
-USER myuser
+RUN groupadd -r myuser && useradd -m -r -g myuser myuser
 
-COPY --from=builder /app/.venv ./.venv
-COPY . .
+COPY --from=builder --chown=myuser:myuser /app/.venv /app/.venv
+
+COPY --chown=myuser:myuser src ./src
+COPY --chown=myuser:myuser alembic ./alembic
+COPY --chown=myuser:myuser alembic.ini ./
+
+USER myuser
 
 EXPOSE 8000
 

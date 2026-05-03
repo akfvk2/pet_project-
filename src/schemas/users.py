@@ -2,13 +2,21 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, field_validator, EmailStr
 from schemas.profiles import ProfileBase, ProfileRead
 from uuid import UUID
-from datetime import datetime
+
 
 
 class UserBase(BaseModel):
     username: str
     email: Optional[EmailStr] = None
     age: Optional[int] = None
+
+@field_validator('emeil')
+@classmethod
+def validate_emeil(cls, value: Optional[EmailStr]) -> Optional[EmailStr]:
+    if value is None:
+        return value
+    cleaned_email = value.strip()
+    return cleaned_email
 
 
 @field_validator('username')

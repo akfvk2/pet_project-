@@ -43,6 +43,13 @@ class UserService:
     async def update_user(self, user_id: UUID, user_in: UserUpdate):
         users_entity = await self._get_user_or_fail(user_id)
         updated_data = user_in.model_dump(exclude_unset=True)
+        if "profile" in updated_data:
+            profile_data = updated_data.pop("profile")
+            if users_entity.profile and profile_data is not None:
+                for p_key, p_value in profile_data.items():
+                    setattr(users_entity.profile, p_key, p_value)
+            elif profile_data is not None:
+                users_entity.profile = profile.ProfileModel(**profile_data)
         for key, value in updated_data.items():
             setattr(users_entity, key, value)
         updated_user = await self.users_repo.update(users_entity)

@@ -1,5 +1,7 @@
 from typing import Optional, List
 from pydantic import BaseModel, ConfigDict, field_validator, EmailStr
+from pydantic.v1 import Field
+
 from schemas.courses import CourseRead
 from uuid import UUID
 import re
@@ -12,12 +14,10 @@ class StudentBase(BaseModel):
 
     @field_validator('name')
     @classmethod
-    def validate_string_filed(cls, value: Optional[str]) -> Optional[str]:
-        if value is None:
-            return value
+    def validate_name(cls, value: str) -> str:
         cleaned_value = value.strip()
         if not cleaned_value:
-            raise ValueError('name is required')
+            raise ValueError('name cannot be empty')
         if len(cleaned_value) < 2:
             raise ValueError('Name must be at least 2 characters')
         return cleaned_value
@@ -44,7 +44,7 @@ class StudentBase(BaseModel):
         return value
 
 class StudentCreate(StudentBase):
-    courses: Optional[List[UUID]] = None
+    courses: List[UUID] = Field(min_length=1)
 
 class StudentUpdate(StudentBase):
     courses: Optional[List[UUID]] = None

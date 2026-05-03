@@ -1,6 +1,8 @@
-from typing import Any
+from typing import Any, Optional
 from fastapi import Request
 from fastapi.responses import UJSONResponse
+from pydantic import BaseModel
+
 
 
 class AppException(Exception):
@@ -10,12 +12,20 @@ class AppException(Exception):
         self.extra = extra
 
 
+class ErrorException(BaseModel):
+    message: str
+    extra: Optional[Any] = None
+    path: str
+
+
+
 async def app_exception_handler(request: Request, exc: AppException):
+    error_data = ErrorException(
+        message=exc.message,
+        extra=exc.extra,
+        path=request.url.path,
+    )
     return UJSONResponse(
         status_code=exc.status_code,
-        content={
-            "message": exc.message,
-            "extra": exc.extra,
-            "path": request.url.path
-        },
+        content=error_data.model_dump(),
     )

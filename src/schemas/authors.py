@@ -32,7 +32,10 @@ class AuthorBase(BaseModel):
 
 
 class AuthorCreate(AuthorBase):
-    pass
+    def to_model(self):
+        from src.models.author import Author
+        return Author(**self.model_dump())
+    
 
 class AuthorUpdate(AuthorBase):
     pass
