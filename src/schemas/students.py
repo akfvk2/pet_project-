@@ -1,7 +1,7 @@
 from typing import Optional, List
 from pydantic import BaseModel, ConfigDict, field_validator, EmailStr
 from pydantic.v1 import Field
-
+from src.exceptions.validation_error import ValidationException
 from schemas.courses import CourseRead
 from uuid import UUID
 import re
@@ -17,9 +17,9 @@ class StudentBase(BaseModel):
     def validate_name(cls, value: str) -> str:
         cleaned_value = value.strip()
         if not cleaned_value:
-            raise ValueError('name cannot be empty')
+            raise ValidationException(message='name cannot be empty')
         if len(cleaned_value) < 2:
-            raise ValueError('Name must be at least 2 characters')
+            raise ValidationException(message='Name must be at least 2 characters')
         return cleaned_value
 
     @field_validator('phone')
@@ -29,28 +29,28 @@ class StudentBase(BaseModel):
             return value
         cleaned_phone = re.sub(r'[\s\-()]', '', value)
         if not re.match(r'^\+?\d{9,15}$', cleaned_phone):
-            raise ValueError("Invalid phone number format")
+            raise ValidationException(message="Invalid phone number format")
         return cleaned_phone
 
     @field_validator('age')
     @classmethod
-    def validate_int(cls, value: Optional[int]) -> Optional[int]:
+    def validate_age(cls, value: Optional[int]) -> Optional[int]:
         if value is None:
             return value
         if value <= 0:
-            raise ValueError('Age must be greater than zero')
+            raise ValidationException(message='Age must be greater than zero')
         if value > 100:
-            raise ValueError('Age is too high')
+            raise ValidationException(message='Age is too high')
         return value
 
 class StudentCreate(StudentBase):
-    courses: List[UUID] = Field(min_length=1)
+    course_id: UUID = Field(min_length=1)
 
 class StudentUpdate(StudentBase):
-    courses: Optional[List[UUID]] = None
+    course_id: Optional[UUID] = None
 
 class StudentRead(StudentBase):
     id: UUID
-    courses: List[CourseRead] = None
+    courses: Optional[CourseRead] = None
 
     model_config = ConfigDict(from_attributes=True)

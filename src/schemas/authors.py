@@ -3,6 +3,8 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from schemas.books import BookBase, BookRead
 from datetime import date
 from uuid import UUID
+from src.exceptions.validation_error import ValidationException
+
 
 class AuthorBase(BaseModel):
     name: str
@@ -12,22 +14,22 @@ class AuthorBase(BaseModel):
 
     @field_validator('name')
     @classmethod
-    def validate_string_field(cls, value: str) -> str:
+    def validate_name(cls, value: str) -> str:
         cleaned_value = value.strip()
         if not cleaned_value:
-            raise ValueError('name is required')
+            raise ValidationException(message='Name is required')
         if len(cleaned_value) < 2:
-            raise ValueError('name is required')
+            raise ValidationException(message='Name must be at least 2 characters')
         return cleaned_value
 
     @field_validator( 'biography', 'nationality')
     @classmethod
-    def validate_string_field_op(cls, value: Optional[str]) -> Optional[str]:
+    def validate_biography_nationality(cls, value: Optional[str]) -> Optional[str]:
         if value is None:
             return value
         cleaned_value = value.strip()
         if len(cleaned_value) < 2:
-            raise ValueError('Field must contain at least 2 characters')
+            raise ValidationException(message='Field must contain at least 2 characters')
         return cleaned_value
 
 

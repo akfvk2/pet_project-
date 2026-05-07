@@ -2,6 +2,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, field_validator, EmailStr
 from schemas.profiles import ProfileBase, ProfileRead
 from uuid import UUID
+from src.exceptions.validation_error import ValidationException
 
 
 
@@ -10,9 +11,9 @@ class UserBase(BaseModel):
     email: Optional[EmailStr] = None
     age: Optional[int] = None
 
-@field_validator('emeil')
+@field_validator('email')
 @classmethod
-def validate_emeil(cls, value: Optional[EmailStr]) -> Optional[EmailStr]:
+def validate_email(cls, value: Optional[EmailStr]) -> Optional[EmailStr]:
     if value is None:
         return value
     cleaned_email = value.strip()
@@ -21,38 +22,58 @@ def validate_emeil(cls, value: Optional[EmailStr]) -> Optional[EmailStr]:
 
 @field_validator('username')
 @classmethod
-def validate_string_filed(cls, value: Optional[str]) -> Optional[str]:
-    if value is None:
-        return value
+def validate_username(cls, value: str) -> str:
     cleaned_value = value.strip()
     if not cleaned_value:
-        raise ValueError('username is required')
+        raise ValidationException(message='username is required')
     if len(cleaned_value) < 2:
-        raise ValueError('Username must be at least 2 characters')
+        raise ValidationException(message='Username must be at least 2 characters')
     return cleaned_value
 
 
 
 @field_validator('age')
 @classmethod
-def validate_int(cls, value: Optional[int]) -> Optional[int]:
+def validate_age(cls, value: Optional[int]) -> Optional[int]:
     if value is None:
         return value
     if value <= 0:
-        raise ValueError('Age must be greater than zero')
+        raise ValidationException(message='Age must be greater than zero')
     if value > 100:
-        raise ValueError('Age is too high')
+        raise ValidationException(message='Age is too high')
     return value
 
 
 class UserCreate(UserBase):
     profile: Optional[ProfileBase] = None
 
+    @field_validator('profile')
+    @classmethod
+    def validate_profile_ext(cls, value):
+        if value is not None and not value.bio.strip():
+            raise ValidationException(message="If profile is provided, bio cannot be empty")
+        return value
+
 class UserUpdate(UserBase):
     profile: Optional[ProfileBase] = None
+
+    @field_validator('profile')
+    @classmethod
+    def validate_profile_ext(cls, value):
+        if value is not None and not value.bio.strip():
+            raise ValidationException(message="If profile is provided, bio cannot be empty")
+        return value
+
 
 class UserRead(UserBase):
     id: UUID
     profile: Optional[ProfileRead] = None
+
+    @field_validator('profile')
+    @classmethod
+    def validate_profile_ext(cls, value):
+        if value is not None and not value.bio.strip():
+            raise ValidationException(message="If profile is provided, bio cannot be empty")
+        return value
 
     model_config = ConfigDict(from_attributes=True)
