@@ -24,8 +24,10 @@ class AuthorService:
         return author_entity
 
     async def create_author(self, author_in: authors.AuthorCreate):
-        author_entity = author.Author.from_schema(author_in)
+        author_entity = author_in.to_model()
         db_author = await self.authors_repo.create(author_entity)
+        await self.session.flush()
+        await self.session.refresh(db_author, attribute_names=['books'])
         return authors.AuthorRead.model_validate(db_author)
 
     async def get_author_by_id(self, author_id: UUID):
@@ -34,9 +36,7 @@ class AuthorService:
 
     async def update_author(self, author_id: UUID, author_in: authors.AuthorUpdate):
         author_entity = await self._get_author_or_fail(author_id)
-        update_data = author_in.model_dump(exclude_unset=True)
-        for key, value in update_data.items():
-            setattr(author_entity, key, value)
+        author_in.update_model(author_entity)
         updated_author = await self.authors_repo.update(author_entity)
         return authors.AuthorRead.model_validate(updated_author)
 

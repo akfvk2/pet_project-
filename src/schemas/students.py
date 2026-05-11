@@ -6,6 +6,7 @@ from schemas.courses import CourseRead
 from uuid import UUID
 import re
 
+
 class StudentBase(BaseModel):
     name: str
     age: Optional[int] = None
@@ -46,11 +47,23 @@ class StudentBase(BaseModel):
 class StudentCreate(StudentBase):
     course: UUID = Field(min_length=1)
 
+    def to_model(self):
+        from src.models.student import Students
+        data = self.model_dump(exclude={"course"})
+        entity = Students(**data, course_id=self.course)
+        return entity
+
 class StudentUpdate(StudentBase):
     course: Optional[UUID] = None
 
+    def update_model(self, student_entity):
+        update_data = self.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(student_entity, key, value)
+        return student_entity
+
 class StudentRead(StudentBase):
     id: UUID
-    courses: Optional[CourseRead] = None
+    course: Optional[CourseRead] = None
 
     model_config = ConfigDict(from_attributes=True)

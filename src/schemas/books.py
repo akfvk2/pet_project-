@@ -42,5 +42,9 @@ class BookBase(BaseModel):
 
 class BookRead(BookBase):
     id: UUID
+    author_id: Optional[UUID] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+class BookCreate(BookBase):
+    pass

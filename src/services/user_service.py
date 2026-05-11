@@ -24,14 +24,10 @@ class UserService:
         return user_entity
 
     async def create_user(self, user_in: UserCreate) -> UserRead:
-        user_data = user_in.model_dump(exclude={"profile"})
-        profile_data = user_in.profile
-        user_entity = user.UserModel(**user_data)
-        profile_entity = profile.ProfileModel(**profile_data.model_dump())
-        user_entity.profile = profile_entity
+        user_entity = user_in.to_model()
         db_user = await self.users_repo.create(user_entity)
         await self.session.flush()
-        await self.session.refresh(db_user)
+        await self.session.refresh(db_user, attribute_names=['profile'])
         return UserRead.model_validate(db_user)
 
     async def get_user_by_id(self, user_id: UUID):
@@ -40,17 +36,7 @@ class UserService:
 
     async def update_user(self, user_id: UUID, user_in: UserUpdate):
         users_entity = await self._get_user_or_fail(user_id)
-        updated_data = user_in.model_dump(exclude_unset=True)
-        if user_in.profile is not None:
-            updated_data = user_in.model_dump(exclude_unset=True, exclude={"profile"})
-            profile_data = user_in.profile.model_dump(exclude_unset=True)
-            if users_entity.profile and profile_data is not None:
-                for p_key, p_value in profile_data.items():
-                    setattr(users_entity.profile, p_key, p_value)
-            elif profile_data is not None:
-                users_entity.profile = profile.ProfileModel(**profile_data)
-        for key, value in updated_data.items():
-            setattr(users_entity, key, value)
+        user_in.update_model(users_entity)
         updated_user = await self.users_repo.update(users_entity)
         return UserRead.model_validate(updated_user)
 
