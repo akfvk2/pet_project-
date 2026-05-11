@@ -29,7 +29,7 @@ class StudentBase(BaseModel):
             return value
         cleaned_phone = re.sub(r'[\s\-()]', '', value)
         if not re.match(r'^\+?\d{9,15}$', cleaned_phone):
-            raise ValidationException(message="Invalid phone number format")
+            raise ValidationException(message="Enter the phone number in the format +79999999999")
         return cleaned_phone
 
     @field_validator('age')
@@ -44,10 +44,10 @@ class StudentBase(BaseModel):
         return value
 
 class StudentCreate(StudentBase):
-    course_id: UUID = Field(min_length=1)
+    course: UUID = Field(min_length=1)
 
 class StudentUpdate(StudentBase):
-    course_id: Optional[UUID] = None
+    course: Optional[UUID] = None
 
 class StudentRead(StudentBase):
     id: UUID

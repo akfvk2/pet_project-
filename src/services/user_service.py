@@ -36,15 +36,14 @@ class UserService:
 
     async def get_user_by_id(self, user_id: UUID):
         user_entity = await self._get_user_or_fail(user_id)
-        if not user_entity:
-            raise NotFoundException(message=f"User with id {user_id} not found")
         return UserRead.model_validate(user_entity)
 
     async def update_user(self, user_id: UUID, user_in: UserUpdate):
         users_entity = await self._get_user_or_fail(user_id)
         updated_data = user_in.model_dump(exclude_unset=True)
-        if "profile" in updated_data:
-            profile_data = updated_data.pop("profile")
+        if user_in.profile is not None:
+            updated_data = user_in.model_dump(exclude_unset=True, exclude={"profile"})
+            profile_data = user_in.profile.model_dump(exclude_unset=True)
             if users_entity.profile and profile_data is not None:
                 for p_key, p_value in profile_data.items():
                     setattr(users_entity.profile, p_key, p_value)

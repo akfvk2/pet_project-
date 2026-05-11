@@ -24,8 +24,11 @@ class StudentService:
         return student_entity
 
     async def create_student(self, student_in: students.StudentCreate):
-        student_data = student_in.model_dump()
+        student_data = student_in.model_dump(exclude={"course"})
+        course_data = student_in.course
         students_entity = student.Students(**student_data)
+        course_entity = course.Course(**course_data.model_dump())
+        students_entity.course = course_entity
         db_student = await self.students_repo.create(students_entity)
         await self.session.flush()
         await self.session.refresh(db_student)
