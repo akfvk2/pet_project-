@@ -21,6 +21,19 @@ class UserBase(BaseModel):
         email_regex = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
         if not email_regex.match(cleaned_email):
             raise ValidationException(message="Invalid email format")
+        allowed_domains = {
+            "mail.ru",
+            "list.ru",
+            "bk.ru",
+            "inbox.ru",
+            "gmail.com",
+            "yandex.ru",
+            "yahoo.com"
+        }
+        domain = cleaned_email.split("@")[-1].lower()
+        if domain not in allowed_domains:
+            allowed_list = ",@".join(allowed_domains)
+            raise ValidationException(message=f"Invalid email address: @{allowed_list}")
         return cleaned_email
 
     @field_validator('username')
