@@ -26,8 +26,6 @@ class UserService:
     async def create_user(self, user_in: UserCreate) -> UserRead:
         user_entity = user_in.to_model()
         db_user = await self.users_repo.create(user_entity)
-        await self.session.flush()
-        await self.session.refresh(db_user, attribute_names=['profile'])
         return UserRead.model_validate(db_user)
 
     async def get_user_by_id(self, user_id: UUID):

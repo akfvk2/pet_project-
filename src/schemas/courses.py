@@ -45,3 +45,8 @@ class CourseRead(CourseBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+class CourseCreate(CourseBase):
+    pass
+
+class CourseUpdate(CourseBase):
+    title: Optional[str] = None

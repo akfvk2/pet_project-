@@ -5,7 +5,8 @@ from datetime import date
 from uuid import UUID
 from src.exceptions.validation_error import ValidationException
 from src.schemas.books import BookCreate
-
+from src.models.author import Author
+from src.models.book import Book
 
 class AuthorBase(BaseModel):
     name: str
@@ -35,19 +36,18 @@ class AuthorBase(BaseModel):
 
 
 class AuthorCreate(AuthorBase):
-    books: Optional[list[BookCreate]] = []
+    books: list[BookCreate]
 
     def to_model(self):
-        from src.models.author import Author
-        from src.models.book import Book
         author_data = self.model_dump(exclude={"books"})
         author_entity = Author(**author_data)
-        if self.books:
-            author_entity.books = [Book(**b.model_dump()) for b in self.books]
+        author_entity.books = [Book(**b.model_dump()) for b in self.books]
         return author_entity
     
 
 class AuthorUpdate(AuthorBase):
+    name: Optional[str] = None
+
     def update_model(self, author_entity):
         update_data = self.model_dump(exclude_unset=True)
         for key, value in update_data.items():

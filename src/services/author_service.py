@@ -26,8 +26,6 @@ class AuthorService:
     async def create_author(self, author_in: authors.AuthorCreate):
         author_entity = author_in.to_model()
         db_author = await self.authors_repo.create(author_entity)
-        await self.session.flush()
-        await self.session.refresh(db_author, attribute_names=['books'])
         return authors.AuthorRead.model_validate(db_author)
 
     async def get_author_by_id(self, author_id: UUID):

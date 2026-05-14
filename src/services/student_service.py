@@ -26,8 +26,6 @@ class StudentService:
     async def create_student(self, student_in: students.StudentCreate):
         students_entity = student_in.to_model()
         db_student = await self.students_repo.create(students_entity)
-        await self.session.flush()
-        await self.session.refresh(db_student, attribute_names=['course'])
         return  students.StudentRead.model_validate(db_student)
 
     async def get_student_by_id(self, student_id: UUID):
@@ -38,8 +36,6 @@ class StudentService:
         students_entity = await self._get_student_or_fail(student_id)
         student_in.update_model(students_entity)
         updated_student = await self.students_repo.update(students_entity)
-        await self.session.flush()
-        await self.session.refresh(updated_student)
         return students.StudentRead.model_validate(updated_student)
 
     async def delete_student(self, student_id: UUID):

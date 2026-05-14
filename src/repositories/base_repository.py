@@ -13,6 +13,8 @@ class BaseRepository(Generic[ModelType]):
 
     async def create(self, obj: ModelType) -> ModelType:
         self.session.add(obj)
+        await self.session.flush()
+        await self.session.refresh(obj)
         return obj
 
     async def get_by_id(self, obj_id: UUID) -> ModelType | None:
@@ -20,6 +22,7 @@ class BaseRepository(Generic[ModelType]):
         return entity
 
     async def update(self, obj: ModelType) -> ModelType:
+        await self.session.flush()
         await self.session.refresh(obj)
         return obj
 

@@ -1,11 +1,12 @@
 from typing import Optional, List
 from pydantic import BaseModel, ConfigDict, field_validator, EmailStr
-from pydantic.v1 import Field
 from src.exceptions.validation_error import ValidationException
-from schemas.courses import CourseRead
+from schemas.courses import CourseRead, CourseUpdate
 from uuid import UUID
 import re
-
+from src.schemas.courses import CourseCreate
+from src.models.course import Course
+from src.models.student import Students
 
 class StudentBase(BaseModel):
     name: str
@@ -45,21 +46,30 @@ class StudentBase(BaseModel):
         return value
 
 class StudentCreate(StudentBase):
-    course: UUID = Field(min_length=1)
+    course: CourseCreate
 
     def to_model(self):
-        from src.models.student import Students
         data = self.model_dump(exclude={"course"})
-        entity = Students(**data, course_id=self.course)
+        entity = Students(**data)
+        if self.course:
+            entity.course = Course(**self.course.model_dump())
         return entity
 
 class StudentUpdate(StudentBase):
-    course: Optional[UUID] = None
+    course: Optional[CourseUpdate] = None
 
     def update_model(self, student_entity):
-        update_data = self.model_dump(exclude_unset=True)
-        for key, value in update_data.items():
+        student_update_data = self.model_dump(exclude={"course"}, exclude_unset=True)
+        for key, value in student_update_data.items():
             setattr(student_entity, key, value)
+        if self.course is not None:
+            if student_entity.course:
+                course_data = self.course.model_dump(exclude_unset=True)
+                for key, value in course_data.items():
+                    setattr(student_entity.course, key, value)
+            else:
+                from src.models.course import Course
+                student_entity.course = Course(**self.course.model_dump())
         return student_entity
 
 class StudentRead(StudentBase):
