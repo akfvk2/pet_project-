@@ -8,6 +8,7 @@ from src.schemas.courses import CourseCreate
 from src.models.course import Course
 from src.models.student import Students
 
+
 class StudentBase(BaseModel):
     name: str
     age: Optional[int] = None
@@ -48,28 +49,34 @@ class StudentBase(BaseModel):
 class StudentCreate(StudentBase):
     course: CourseCreate
 
+    @field_validator('course')
+    @classmethod
+    def validate_course(cls, value):
+        if value is None:
+            raise ValidationException(message="Course is required")
+        return value
+
     def to_model(self):
         data = self.model_dump(exclude={"course"})
         entity = Students(**data)
-        if self.course:
-            entity.course = Course(**self.course.model_dump())
+        entity.course = Course(**self.course.model_dump())
         return entity
 
 class StudentUpdate(StudentBase):
-    course: Optional[CourseUpdate] = None
+    course: CourseUpdate
+
+    @field_validator('course')
+    @classmethod
+    def validate_course(cls, value):
+        if value is None:
+            raise ValidationException(message="Course is required")
+        return value
 
     def update_model(self, student_entity):
-        student_update_data = self.model_dump(exclude={"course"}, exclude_unset=True)
+        student_update_data = self.model_dump(exclude={"course"})  # БЕЗ exclude_unset
         for key, value in student_update_data.items():
             setattr(student_entity, key, value)
-        if self.course is not None:
-            if student_entity.course:
-                course_data = self.course.model_dump(exclude_unset=True)
-                for key, value in course_data.items():
-                    setattr(student_entity.course, key, value)
-            else:
-                from src.models.course import Course
-                student_entity.course = Course(**self.course.model_dump())
+        student_entity.course = Course(**self.course.model_dump())
         return student_entity
 
 class StudentRead(StudentBase):

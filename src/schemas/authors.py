@@ -4,7 +4,7 @@ from schemas.books import BookBase, BookRead
 from datetime import date
 from uuid import UUID
 from src.exceptions.validation_error import ValidationException
-from src.schemas.books import BookCreate
+from src.schemas.books import BookCreate, BookUpdate
 from src.models.author import Author
 from src.models.book import Book
 
@@ -38,6 +38,13 @@ class AuthorBase(BaseModel):
 class AuthorCreate(AuthorBase):
     books: list[BookCreate]
 
+    @field_validator('books')
+    @classmethod
+    def validate_books(cls, value):
+        if not value:
+            raise ValidationException(message="Author must have at least one book")
+        return value
+
     def to_model(self):
         author_data = self.model_dump(exclude={"books"})
         author_entity = Author(**author_data)
@@ -46,12 +53,20 @@ class AuthorCreate(AuthorBase):
     
 
 class AuthorUpdate(AuthorBase):
-    name: Optional[str] = None
+    books: list[BookUpdate]
+
+    @field_validator('books')
+    @classmethod
+    def validate_books(cls, value):
+        if not value:
+            raise ValidationException(message="Author must have at least one book")
+        return value
 
     def update_model(self, author_entity):
-        update_data = self.model_dump(exclude_unset=True)
+        update_data = self.model_dump(exclude={"books"})
         for key, value in update_data.items():
             setattr(author_entity, key, value)
+        author_entity.books = [Book(**b.model_dump()) for b in self.books]
         return author_entity
 
 class AuthorRead(AuthorBase):

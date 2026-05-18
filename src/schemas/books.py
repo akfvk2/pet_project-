@@ -48,3 +48,6 @@ class BookRead(BookBase):
 
 class BookCreate(BookBase):
     pass
+
+class BookUpdate(BookBase):
+    pass

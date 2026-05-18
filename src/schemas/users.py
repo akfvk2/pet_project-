@@ -67,7 +67,7 @@ class UserCreate(UserBase):
     @field_validator('profile')
     @classmethod
     def validate_profile_ext(cls, value):
-        if value is not None and not value.bio.strip():
+        if value is not None and not value.bio is not None and not value.bio.strip():
             raise ValidationException(message="If profile is provided, bio cannot be empty")
         return value
 
@@ -93,14 +93,11 @@ class UserUpdate(UserBase):
 
     def update_model(self, user_entity):
         from src.models.profile import ProfileModel
-        updated_data = self.model_dump(exclude_unset=True, exclude={"profile"})
+        updated_data = self.model_dump(exclude={"profile"})  # БЕЗ exclude_unset
         if self.profile is not None:
-            profile_data = self.profile.model_dump(exclude_unset=True)
-            if user_entity.profile:
-                for p_key, p_value in profile_data.items():
-                    setattr(user_entity.profile, p_key, p_value)
-            else:
-                user_entity.profile = ProfileModel(**profile_data)
+            user_entity.profile = ProfileModel(**self.profile.model_dump())
+        else:
+            user_entity.profile = None
         for key, value in updated_data.items():
             setattr(user_entity, key, value)
         return user_entity
@@ -113,7 +110,7 @@ class UserRead(UserBase):
     @field_validator('profile')
     @classmethod
     def validate_profile_ext(cls, value):
-        if value is not None and not value.bio.strip():
+        if value is not None and not value.bio is not None and not value.bio.strip():
             raise ValidationException(message="If profile is provided, bio cannot be empty")
         return value
 

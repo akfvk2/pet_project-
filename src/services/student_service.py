@@ -30,6 +30,8 @@ class StudentService:
 
     async def get_student_by_id(self, student_id: UUID):
         student_entity = await self._get_student_or_fail(student_id)
+        if student_entity.course:
+            student_entity.course.students = []
         return students.StudentRead.model_validate(student_entity)
 
     async def update_student(self, student_id: UUID, student_in: students.StudentUpdate):

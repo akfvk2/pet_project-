@@ -30,6 +30,8 @@ class UserService:
 
     async def get_user_by_id(self, user_id: UUID):
         user_entity = await self._get_user_or_fail(user_id)
+        if user_entity.profile:
+            user_entity.profile.user = None
         return UserRead.model_validate(user_entity)
 
     async def update_user(self, user_id: UUID, user_in: UserUpdate):

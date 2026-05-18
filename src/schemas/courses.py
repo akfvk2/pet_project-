@@ -49,4 +49,10 @@ class CourseCreate(CourseBase):
     pass
 
 class CourseUpdate(CourseBase):
-    title: Optional[str] = None
+    pass
+
+    def update_model(self, course_entity):
+        update_data = self.model_dump()
+        for key, value in update_data.items():
+            setattr(course_entity, key, value)
+        return course_entity

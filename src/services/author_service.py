@@ -30,6 +30,8 @@ class AuthorService:
 
     async def get_author_by_id(self, author_id: UUID):
         author_entity = await self._get_author_or_fail(author_id)
+        for book in author_entity.books:
+            book.author = None
         return authors.AuthorRead.model_validate(author_entity)
 
     async def update_author(self, author_id: UUID, author_in: authors.AuthorUpdate):
