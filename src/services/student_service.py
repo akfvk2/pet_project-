@@ -2,45 +2,60 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.repositories.student import StudentRepository
 from src.exceptions.not_found import NotFoundException
 from src.models import student, course
-from schemas import students
+from src.cache import redis_client
+from src.schemas import students
 from uuid import UUID
 import logging
+import json
 
 logger = logging.getLogger(__name__)
+
+CACHE_TTL = 3600
+
 
 class StudentService:
     def __init__(self, session: AsyncSession):
         self.session = session
         self.students_repo = StudentRepository(self.session)
 
+    def _cache_key(self, student_id: UUID) -> str:
+        return f"student:{student_id}"
+
     async def _get_student_or_fail(self, student_id: UUID):
         student_entity = await self.students_repo.get_by_id(student_id)
         if not student_entity:
-            logger.error(
-                f"Entity 'Student' with id {student_id} not found",
-                extra={"student_id": student_id}
-            )
+            logger.error(f"Entity 'Student' with id {student_id} not found", extra={"student_id": student_id})
             raise NotFoundException(f"Student with id {student_id} not found")
         return student_entity
 
     async def create_student(self, student_in: students.StudentCreate):
         students_entity = student_in.to_model()
         db_student = await self.students_repo.create(students_entity)
-        return  students.StudentRead.model_validate(db_student)
+        return students.StudentRead.model_validate(db_student)
 
     async def get_student_by_id(self, student_id: UUID):
+        cache_key = self._cache_key(student_id)
+        cached = await redis_client.get(cache_key)
+        if cached:
+            logger.info(f"Cache hit for student {student_id}")
+            return students.StudentRead.model_validate(json.loads(cached))
+
         student_entity = await self._get_student_or_fail(student_id)
         if student_entity.course:
             student_entity.course.students = []
-        return students.StudentRead.model_validate(student_entity)
+        result = students.StudentRead.model_validate(student_entity)
+        await redis_client.setex(cache_key, CACHE_TTL, result.model_dump_json())
+        return result
 
     async def update_student(self, student_id: UUID, student_in: students.StudentUpdate):
         students_entity = await self._get_student_or_fail(student_id)
         student_in.update_model(students_entity)
         updated_student = await self.students_repo.update(students_entity)
+        await redis_client.delete(self._cache_key(student_id))
         return students.StudentRead.model_validate(updated_student)
 
     async def delete_student(self, student_id: UUID):
         students_entity = await self._get_student_or_fail(student_id)
         await self.students_repo.delete(students_entity)
+        await redis_client.delete(self._cache_key(student_id))
         return True

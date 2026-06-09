@@ -1,7 +1,7 @@
 import re
 from typing import Optional
 from pydantic import BaseModel, ConfigDict, field_validator, EmailStr
-from schemas.profiles import ProfileBase, ProfileRead
+from src.schemas.profiles import ProfileBase, ProfileRead
 from uuid import UUID
 from src.exceptions.validation_error import ValidationException
 
@@ -115,3 +115,23 @@ class UserRead(UserBase):
         return value
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class OrderResponse(BaseModel):
+    id: UUID
+    title: str
+    price: float
+    description: str
+    status: str
+
+class UserWithOrdersRead(UserBase):
+    id: UUID
+    profile: Optional[ProfileRead] = None
+    orders: list[OrderResponse] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+class OrderCreate(BaseModel):
+    title: str
+    price: float
+    description: str = ""

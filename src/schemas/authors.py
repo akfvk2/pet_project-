@@ -1,6 +1,6 @@
 from typing import Optional, List
 from pydantic import BaseModel, ConfigDict, field_validator
-from schemas.books import BookBase, BookRead
+from src.schemas.books import BookBase, BookRead
 from datetime import date
 from uuid import UUID
 from src.exceptions.validation_error import ValidationException

@@ -1,7 +1,7 @@
 from typing import Optional, List
 from pydantic import BaseModel, ConfigDict, field_validator, EmailStr
 from src.exceptions.validation_error import ValidationException
-from schemas.courses import CourseRead, CourseUpdate
+from src.schemas.courses import CourseRead, CourseUpdate
 from uuid import UUID
 import re
 from src.schemas.courses import CourseCreate

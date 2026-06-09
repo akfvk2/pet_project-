@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.db import get_session
-from schemas import students
+from src.schemas import students
 from src.services.student_service import StudentService
 from uuid import UUID
 

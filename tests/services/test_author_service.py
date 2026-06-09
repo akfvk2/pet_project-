@@ -1,0 +1,134 @@
+from datetime import datetime
+import pytest
+from unittest.mock import AsyncMock
+from uuid import uuid4
+from src.services.author_service import AuthorService
+from src.schemas.authors import AuthorCreate, AuthorUpdate, AuthorRead
+from src.exceptions.not_found import NotFoundException
+from src.models.author import Author
+from src.models.book import Book
+import src.services.author_service as svc_module
+
+
+@pytest.fixture
+def mock_redis():
+    redis = AsyncMock()
+    redis.get = AsyncMock(return_value=None)
+    redis.setex = AsyncMock()
+    redis.delete = AsyncMock()
+    return redis
+
+
+@pytest.fixture
+def author_service(mock_redis):
+    service = AuthorService(session=AsyncMock())
+    svc_module.redis_client = mock_redis
+    return service
+
+
+@pytest.fixture
+def sample_author():
+    from src.models.book import Book
+    author = Author(
+        name="Толстой",
+        biography="Русский писатель",
+        birth_date=datetime(1828, 9, 9),
+        nationality="Русский"
+    )
+    author.id = uuid4()
+    author.books = [Book(title="Война и мир", page_count=100, genre="Роман")]
+    author.books[0].id = uuid4()
+    author.books[0].author = None
+    return author
+
+@pytest.fixture
+def updated_author():
+    author = Author(
+        name="Достоевский",
+        biography="Русский писатель",
+        birth_date=datetime(1821, 11, 11),
+        nationality="Русский"
+    )
+    author.id = uuid4()
+    author.books = [Book(title="Преступление и наказание", page_count=600, genre="Роман")]
+    author.books[0].id = uuid4()
+    author.books[0].author = None
+    return author
+
+class TestGetUserById:
+    async def test_cache_miss_fetches_from_db(self, author_service, mock_redis, sample_author):
+        author_service.authors_repo.get_by_id = AsyncMock(return_value=sample_author)
+        result = await author_service.get_author_by_id(sample_author.id)
+        assert result.name == 'Толстой'
+        mock_redis.setex.assert_called_once()
+
+    async def test_cache_hit_skips_db(self, author_service, mock_redis, sample_author):
+        author_read = AuthorRead.model_validate(sample_author)
+        mock_redis.get = AsyncMock(return_value=author_read.model_dump_json())
+        author_service.authors_repo.get_by_id = AsyncMock()
+
+        await author_service.get_author_by_id(sample_author.id)
+
+        author_service.authors_repo.get_by_id.assert_not_called()
+
+    async def test_not_found_raises_exception(self, author_service):
+        author_service.authors_repo.get_by_id = AsyncMock(return_value=None)
+        with pytest.raises(NotFoundException):
+            await author_service.get_author_by_id(uuid4())
+
+class TestCreateAuthor:
+    async def test_create_returns_user_read(self, author_service, sample_author):
+        author_service.authors_repo.create = AsyncMock(return_value=sample_author)
+        author_in = AuthorCreate(
+    name="Толстой",
+    books=[{"title": "Война и мир", "page_count": 100, "genre": "Роман"}]
+)
+        result = await author_service.create_author(author_in)
+        assert result.name == "Толстой"
+
+class TestUpdateAuthor:
+    async def test_update_success(self, author_service, sample_author, updated_author):
+        author_service.authors_repo.get_by_id = AsyncMock(return_value=sample_author)
+        author_service.authors_repo.update = AsyncMock(return_value=updated_author)
+
+        author_in = AuthorUpdate(
+            name="Достоевский",
+            books=[{"title": "Преступление и наказание", "page_count": 600, "genre": "Роман"}]
+        )
+        result = await author_service.update_author(sample_author.id, author_in)
+
+        assert result.name == "Достоевский"
+        author_service.authors_repo.update.assert_called_once()
+
+    async def test_update_clears_cache(self, author_service, mock_redis, sample_author, updated_author):
+        author_service.authors_repo.get_by_id = AsyncMock(return_value=sample_author)
+        author_service.authors_repo.update = AsyncMock(return_value=updated_author)
+
+        await author_service.update_author(
+            sample_author.id,
+            AuthorUpdate(
+                name="Достоевский",
+                books=[{"title": "Преступление и наказание", "page_count": 600, "genre": "Роман"}]
+            )
+        )
+
+        mock_redis.delete.assert_called_once_with(f"author:{sample_author.id}")
+
+    async def test_update_not_found(self, author_service):
+        author_service.authors_repo.get_by_id = AsyncMock(return_value=None)
+
+        with pytest.raises(NotFoundException):
+            await author_service.update_author(
+                uuid4(),
+                AuthorUpdate(
+                    name="Достоевский",
+                    books=[{"title": "Преступление и наказание", "page_count": 600, "genre": "Роман"}]
+                )
+            )
+
+class TestDeleteUser:
+    async def test_delete_clears_cache(self, author_service, mock_redis, sample_author):
+        author_service.authors_repo.get_by_id = AsyncMock(return_value=sample_author)
+        author_service.authors_repo.delete = AsyncMock()
+        await author_service.delete_author(sample_author.id)
+        mock_redis.delete.assert_called_once_with(f"author:{sample_author.id}")
