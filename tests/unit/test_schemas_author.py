@@ -1,5 +1,6 @@
 import pytest
 from src.schemas.authors import AuthorCreate, AuthorUpdate, AuthorBase
+from src.exceptions.validation_error import ValidationException
 
 class TestNameValidator:
     def test_valid_name(self):
@@ -11,11 +12,11 @@ class TestNameValidator:
         assert author.name.strip() == "test"
 
     def test_name_too_short(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationException):
             AuthorBase(name="t")
 
     def test_empty_name(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationException):
             AuthorBase(name=" ")
 
 
@@ -29,7 +30,7 @@ class TestBiographyValidator:
         assert author.biography.strip() == "test"
 
     def test_biography_too_short(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationException):
             AuthorBase(name='test',biography="t")
 
 class TestNationalityValidator:
@@ -42,5 +43,5 @@ class TestNationalityValidator:
         assert author.nationality.strip() == "test"
 
     def test_nationality_too_short(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationException):
             AuthorBase(name='test',nationality="t")

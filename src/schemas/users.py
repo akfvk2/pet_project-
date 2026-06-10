@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict, field_validator, EmailStr
 from src.schemas.profiles import ProfileBase, ProfileRead
 from uuid import UUID
 from src.exceptions.validation_error import ValidationException
+from src.schemas.orders import OrderResponse
 
 
 
@@ -116,14 +117,6 @@ class UserRead(UserBase):
 
     model_config = ConfigDict(from_attributes=True)
 
-
-class OrderResponse(BaseModel):
-    id: UUID
-    title: str
-    price: float
-    description: str
-    status: str
-
 class UserWithOrdersRead(UserBase):
     id: UUID
     profile: Optional[ProfileRead] = None
@@ -131,7 +124,17 @@ class UserWithOrdersRead(UserBase):
 
     model_config = ConfigDict(from_attributes=True)
 
-class OrderCreate(BaseModel):
-    title: str
-    price: float
-    description: str = ""
+class UserCreateWithOrder(UserCreate):
+    order_title: str
+    order_price: float
+    order_description: str = ""
+
+    def to_model(self):
+        from src.models.user import UserModel
+        from src.models.profile import ProfileModel
+        user_data = self.model_dump(exclude={"profile", "order_title", "order_price", "order_description"})
+        user_entity = UserModel(**user_data)
+        if self.profile is not None:
+            profile_entity = ProfileModel(**self.profile.model_dump())
+            user_entity.profile = profile_entity
+        return user_entity

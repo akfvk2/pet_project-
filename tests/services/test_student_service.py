@@ -9,14 +9,6 @@ import src.services.student_service as svc_module
 from src.models.course import Course
 
 
-@pytest.fixture
-def mock_redis():
-    redis = AsyncMock()
-    redis.get = AsyncMock(return_value=None)
-    redis.setex = AsyncMock()
-    redis.delete = AsyncMock()
-    return redis
-
 
 @pytest.fixture
 def student_service(mock_redis):
@@ -120,7 +112,7 @@ class TestUpdateStudent:
         )
 
 
-        mock_redis.delete.assert_called_once_with(f"student:{sample_student.id}")
+        mock_redis.setex.assert_called_once()
 
     async def test_update_not_found(self, student_service):
         student_service.students_repo.get_by_id = AsyncMock(return_value=None)

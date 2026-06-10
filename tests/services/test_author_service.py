@@ -11,20 +11,10 @@ import src.services.author_service as svc_module
 
 
 @pytest.fixture
-def mock_redis():
-    redis = AsyncMock()
-    redis.get = AsyncMock(return_value=None)
-    redis.setex = AsyncMock()
-    redis.delete = AsyncMock()
-    return redis
-
-
-@pytest.fixture
 def author_service(mock_redis):
     service = AuthorService(session=AsyncMock())
     svc_module.redis_client = mock_redis
     return service
-
 
 @pytest.fixture
 def sample_author():
@@ -112,7 +102,7 @@ class TestUpdateAuthor:
             )
         )
 
-        mock_redis.delete.assert_called_once_with(f"author:{sample_author.id}")
+        mock_redis.setex.assert_called_once()
 
     async def test_update_not_found(self, author_service):
         author_service.authors_repo.get_by_id = AsyncMock(return_value=None)

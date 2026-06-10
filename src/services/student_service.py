@@ -7,10 +7,12 @@ from src.schemas import students
 from uuid import UUID
 import logging
 import json
+from src.config import Settings
+
 
 logger = logging.getLogger(__name__)
+settings = Settings()
 
-CACHE_TTL = 3600
 
 
 class StudentService:
@@ -41,18 +43,23 @@ class StudentService:
             return students.StudentRead.model_validate(json.loads(cached))
 
         student_entity = await self._get_student_or_fail(student_id)
-        if student_entity.course:
-            student_entity.course.students = []
         result = students.StudentRead.model_validate(student_entity)
-        await redis_client.setex(cache_key, CACHE_TTL, result.model_dump_json())
+        try:
+            await redis_client.setex(cache_key, settings.cache_ttl, result.model_dump_json())
+        except Exception as e:
+            logger.warning(f"Redis unavailable, skipping cache: {e}")
         return result
 
     async def update_student(self, student_id: UUID, student_in: students.StudentUpdate):
         students_entity = await self._get_student_or_fail(student_id)
         student_in.update_model(students_entity)
         updated_student = await self.students_repo.update(students_entity)
-        await redis_client.delete(self._cache_key(student_id))
-        return students.StudentRead.model_validate(updated_student)
+        updated_result = students.StudentRead.model_validate(updated_student)
+        try:
+            await redis_client.setex(self._cache_key(student_id), settings.cache_ttl, updated_result.model_dump_json())
+        except Exception as e:
+            logger.warning(f"Redis unavailable, skipping cache update: {e}")
+        return updated_result
 
     async def delete_student(self, student_id: UUID):
         students_entity = await self._get_student_or_fail(student_id)

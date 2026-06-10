@@ -1,5 +1,6 @@
 import pytest
 from src.schemas.users import UserBase, UserCreate
+from src.exceptions.validation_error import ValidationException
 
 
 class TestUsernameValidation:
@@ -12,11 +13,11 @@ class TestUsernameValidation:
         assert user.username == "Alex"
 
     def test_username_too_short(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationException):
             UserBase(username="A")
 
     def test_empty_username(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationException):
             UserBase(username="   ")
 
 
@@ -30,7 +31,7 @@ class TestEmailValidation:
         assert user.email == "alex@yandex.ru"
 
     def test_invalid_domain(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationException):
             UserBase(username="Alex", email="alex@hotmail.com")
 
     def test_none_email_is_ok(self):
@@ -44,15 +45,15 @@ class TestAgeValidation:
         assert user.age == 25
 
     def test_age_zero(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationException):
             UserBase(username="Alex", age=0)
 
     def test_negative_age(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationException):
             UserBase(username="Alex", age=-5)
 
     def test_age_over_100(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationException):
             UserBase(username="Alex", age=150)
 
     def test_age_none(self):

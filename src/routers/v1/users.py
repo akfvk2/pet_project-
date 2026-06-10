@@ -4,18 +4,20 @@ from src.db import get_session
 from src.schemas import users
 from src.services.user_service import UserService
 from uuid import UUID
-from src.schemas.users import OrderCreate, UserWithOrdersRead, OrderResponse
+from src.schemas.users import UserWithOrdersRead, UserCreateWithOrder
+
+
 
 router = APIRouter()
 
-@router.post("/", response_model=users.UserRead, status_code=status.HTTP_201_CREATED)
-async def create_user(user_in: users.UserCreate, session: AsyncSession = Depends(get_session)):
+@router.post("/", response_model=UserWithOrdersRead, status_code=status.HTTP_201_CREATED)
+async def create_user(user_in: UserCreateWithOrder, session: AsyncSession = Depends(get_session)):
     return await UserService(session).create_user(user_in)
 
 
-@router.get("/{user_id}", response_model=users.UserRead)
+@router.get("/{user_id}", response_model=UserWithOrdersRead)
 async def read_user(user_id: UUID, session: AsyncSession = Depends(get_session)):
-    return await UserService(session).get_user_by_id(user_id)
+    return await UserService(session).get_user_with_orders(user_id)
 
 
 @router.put("/{user_id}", response_model=users.UserRead)
@@ -28,16 +30,6 @@ async def delete_user(user_id: UUID, session: AsyncSession = Depends(get_session
     await UserService(session).delete_user(user_id)
 
 
-@router.get("/{user_id}/orders", response_model=UserWithOrdersRead)
-async def get_user_with_orders(user_id: UUID, session: AsyncSession = Depends(get_session)):
-    return await UserService(session).get_user_with_orders(user_id)
 
 
-@router.post("/{user_id}/orders", response_model=OrderResponse)
-async def create_order_for_user(
-    user_id: UUID,
-    order_in: OrderCreate,
-    session: AsyncSession = Depends(get_session),
-):
-    return await UserService(session).create_order_for_user(user_id, order_in)
 
