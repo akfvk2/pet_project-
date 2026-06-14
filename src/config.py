@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     retry_initial_wait: float = Field(default=0.5, env="RETRY_INITIAL_WAIT")
     retry_max_wait: float = Field(default=5.0, env="RETRY_MAX_WAIT")
     cache_ttl: int = Field(default=3600, env="CACHE_TTL")
+    retry_jitter: float = Field(default=1.0, env="RETRY_JITTER")
+    retry_status_codes: list[int] = Field(default=[429, 500, 502, 503, 504], env="RETRY_STATUS_CODES")
 
     class Config:
         env_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+
+settings = Settings()

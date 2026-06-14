@@ -7,11 +7,11 @@ from src.schemas import students
 from uuid import UUID
 import logging
 import json
-from src.config import Settings
+from src.config import settings
 
 
 logger = logging.getLogger(__name__)
-settings = Settings()
+
 
 
 
@@ -44,10 +44,7 @@ class StudentService:
 
         student_entity = await self._get_student_or_fail(student_id)
         result = students.StudentRead.model_validate(student_entity)
-        try:
-            await redis_client.setex(cache_key, settings.cache_ttl, result.model_dump_json())
-        except Exception as e:
-            logger.warning(f"Redis unavailable, skipping cache: {e}")
+        await redis_client.setex(cache_key, settings.cache_ttl, result.model_dump_json())
         return result
 
     async def update_student(self, student_id: UUID, student_in: students.StudentUpdate):
@@ -55,10 +52,7 @@ class StudentService:
         student_in.update_model(students_entity)
         updated_student = await self.students_repo.update(students_entity)
         updated_result = students.StudentRead.model_validate(updated_student)
-        try:
-            await redis_client.setex(self._cache_key(student_id), settings.cache_ttl, updated_result.model_dump_json())
-        except Exception as e:
-            logger.warning(f"Redis unavailable, skipping cache update: {e}")
+        await redis_client.setex(self._cache_key(student_id), settings.cache_ttl, updated_result.model_dump_json())
         return updated_result
 
     async def delete_student(self, student_id: UUID):

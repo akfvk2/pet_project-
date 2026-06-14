@@ -7,10 +7,10 @@ from uuid import UUID
 from src.exceptions.not_found import NotFoundException
 import logging
 import json
-from src.config import Settings
+from src.config import settings
 
 logger = logging.getLogger(__name__)
-settings = Settings()
+
 
 
 
@@ -46,11 +46,7 @@ class AuthorService:
         for book in author_entity.books:
             book.author = None
         result = authors.AuthorRead.model_validate(author_entity)
-
-        try:
-            await redis_client.setex(cache_key, settings.cache_ttl, result.model_dump_json())
-        except Exception as e:
-            logger.warning(f"Redis unavailable, skipping cache: {e}")
+        await redis_client.setex(cache_key, settings.cache_ttl, result.model_dump_json())
         return result
 
     async def update_author(self, author_id: UUID, author_in: authors.AuthorUpdate):
@@ -58,10 +54,7 @@ class AuthorService:
         author_in.update_model(author_entity)
         updated_author = await self.authors_repo.update(author_entity)
         updated_result = authors.AuthorRead.model_validate(updated_author)
-        try:
-            await redis_client.setex(self._cache_key(author_id), settings.cache_ttl, updated_result.model_dump_json())
-        except Exception as e:
-            logger.warning(f"Redis unavailable, skipping cache update: {e}")
+        await redis_client.setex(self._cache_key(author_id), settings.cache_ttl, updated_result.model_dump_json())
         return updated_result
 
     async def delete_author(self, author_id: UUID):

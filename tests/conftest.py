@@ -1,6 +1,5 @@
 import pytest
 import pytest_asyncio
-import fakeredis.aioredis
 from unittest.mock import AsyncMock
 from sqlalchemy.pool import NullPool
 from testcontainers.postgres import PostgresContainer
@@ -19,6 +18,11 @@ from src.models.book import Book
 from src.models.student import Students
 from src.models.course import Course
 import os
+from testcontainers.redis import RedisContainer
+from src.cache import RedisClient
+import respx
+import httpx
+from uuid import uuid4 as _uuid4
 
 @pytest.fixture(scope="session")
 def postgres_container():
@@ -35,6 +39,18 @@ def db_url(postgres_container):
     alembic_cfg = Config("alembic.ini")
     command.upgrade(alembic_cfg, "head")
     return url
+
+@pytest.fixture(scope="session")
+def redis_container():
+    with RedisContainer("redis:7") as container:
+        yield container
+
+
+@pytest.fixture(scope="session")
+def redis_url(redis_container):
+    host = redis_container.get_container_host_ip()
+    port = redis_container.get_exposed_port(6379)
+    return f"redis://{host}:{port}"
 
 
 @pytest_asyncio.fixture
@@ -64,20 +80,32 @@ def mock_order_client():
 
 
 @pytest_asyncio.fixture
-async def client(db_session):
+async def client(db_session, redis_url):
     app = get_app()
 
     async def override_get_session():
         yield db_session
 
     app.dependency_overrides[get_session] = override_get_session
-    cache_module.redis_client._client = fakeredis.aioredis.FakeRedis()
+    cache_module.redis_client = RedisClient(redis_url)
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test",
-        follow_redirects=True
-    ) as ac:
-        yield ac
+    with respx.mock(base_url="http://localhost:8001", assert_all_called=False) as mock:
+        mock.post("/v1/orders/").mock(return_value=httpx.Response(201, json={
+            "id": str(_uuid4()),
+            "title": "Test Order",
+            "price": 10.0,
+            "description": "",
+            "status": "pending"
+        }))
+        mock.get(url__regex=r"/v1/orders/by-user/.*").mock(
+            return_value=httpx.Response(200, json=[])
+        )
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            follow_redirects=True
+        ) as ac:
+            yield ac
 
     app.dependency_overrides.clear()

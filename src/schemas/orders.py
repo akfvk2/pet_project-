@@ -15,3 +15,10 @@ class OrderCreate(BaseModel):
     title: str
     price: float
     description: str = ""
+
+
+class OrderCreateRequest(BaseModel):
+    title: str
+    price: float
+    user_id: UUID
+    description: str = ""

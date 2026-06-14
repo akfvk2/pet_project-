@@ -1,7 +1,8 @@
 import redis.asyncio as redis
-from src.config import Settings
+import logging
+from src.config import settings
 
-settings = Settings()
+logger = logging.getLogger(__name__)
 
 
 class RedisClient:
@@ -9,13 +10,23 @@ class RedisClient:
         self._client = redis.from_url(url, encoding="utf-8", decode_responses=True)
 
     async def get(self, key: str) -> str | None:
-        return await self._client.get(key)
+        try:
+            return await self._client.get(key)
+        except Exception as e:
+            logger.warning(f"Redis unavailable: {e}")
+            return None
 
     async def setex(self, key: str, ttl: int, value: str) -> None:
-        await self._client.set(key, value, ex=ttl)
+        try:
+            await self._client.set(key, value, ex=ttl)
+        except Exception as e:
+            logger.warning(f"Redis unavailable: {e}")
 
     async def delete(self, key: str) -> None:
-        await self._client.delete(key)
+        try:
+            await self._client.delete(key)
+        except Exception as e:
+            logger.warning(f"Redis unavailable: {e}")
 
 
 redis_client = RedisClient(settings.redis_url)
