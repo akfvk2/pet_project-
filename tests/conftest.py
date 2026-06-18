@@ -23,6 +23,7 @@ from src.cache import RedisClient
 import respx
 import httpx
 from uuid import uuid4 as _uuid4
+from src.cache import RedisClient
 
 @pytest.fixture(scope="session")
 def postgres_container():
@@ -62,13 +63,11 @@ async def db_session(db_url):
     await engine.dispose()
 
 
-@pytest.fixture
-def mock_redis():
-    redis = AsyncMock()
-    redis.get = AsyncMock(return_value=None)
-    redis.setex = AsyncMock()
-    redis.delete = AsyncMock()
-    return redis
+@pytest_asyncio.fixture
+async def redis_client(redis_url):
+    client = RedisClient(redis_url)
+    yield client
+    await client._client.flushall()
 
 
 @pytest.fixture

@@ -8,11 +8,11 @@ class OrderServiceException(AppException):
             status_code=status_code
         )
 
-class OrderNotFoundException(AppException):
+class OrderNotFoundException(OrderServiceException):
     def __init__(self, message: str = "Order not found"):
         super().__init__(message=message, status_code=404)
 
 
-class OrderServiceUnavailableError(AppException):
+class OrderServiceUnavailableError(OrderServiceException):
     def __init__(self, message: str = "Order service unavailable"):
-        super().__init__(message=message, status_code=503)
+        super().__init__(status_code=503, message=message)

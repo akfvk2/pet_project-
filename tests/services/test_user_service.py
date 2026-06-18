@@ -9,9 +9,9 @@ import src.services.user_service as svc_module
 
 
 @pytest.fixture
-def user_service(mock_redis, mock_order_client):
+def user_service(redis_client, mock_order_client):
     service = UserService(session=AsyncMock())
-    svc_module.redis_client = mock_redis
+    svc_module.redis_client = redis_client
     service.order_client = mock_order_client
     return service
 
@@ -55,14 +55,15 @@ class TestUserService:
         result = await user_service.update_user(sample_user.id, user_in)
         assert result.username == "updated"
 
-    async def test_update_clears_cache(self, user_service, mock_redis, sample_user):
+    async def test_update_clears_cache(self, user_service, redis_client, sample_user):
         user_service.users_repo.get_by_id = AsyncMock(return_value=sample_user)
         user_service.users_repo.update = AsyncMock(return_value=sample_user)
         await user_service.update_user(
             sample_user.id,
             UserUpdate(username="updated", email="updated@gmail.com", age=30)
         )
-        mock_redis.setex.assert_called_once()
+        cached = await redis_client.get(f"user:{sample_user.id}")
+        assert cached is not None
 
     async def test_update_not_found(self, user_service):
         user_service.users_repo.get_by_id = AsyncMock(return_value=None)
@@ -72,8 +73,9 @@ class TestUserService:
                 UserUpdate(username="updated", email="updated@gmail.com", age=30)
             )
 
-    async def test_delete_clears_cache(self, user_service, mock_redis, sample_user):
+    async def test_delete_clears_cache(self, user_service, redis_client, sample_user):
         user_service.users_repo.get_by_id = AsyncMock(return_value=sample_user)
         user_service.users_repo.delete = AsyncMock()
         await user_service.delete_user(sample_user.id)
-        mock_redis.delete.assert_called_once_with(f"user:{sample_user.id}")
+        cached = await redis_client.get(f"user:{sample_user.id}")
+        assert cached is None

@@ -9,15 +9,24 @@ from src.clients.order_client import OrderServiceClient
 from src.schemas.users import UserWithOrdersRead, UserCreateWithOrder
 from src.schemas.orders import OrderResponse
 from src.config import settings
+from typing import TypedDict
 
 logger = logging.getLogger(__name__)
 
+
+
+class UserLogExtra(TypedDict):
+    user_id: UUID
 
 class UserService:
     def __init__(self, session: AsyncSession):
         self.session = session
         self.users_repo = UserRepository(self.session)
         self.order_client = OrderServiceClient()
+
+    async def _compensate_create_user(self, db_user) -> None:
+        logger.info(f"Saga compensation: deleting user {db_user.id}")
+        await self.users_repo.delete(db_user)
 
     def _cache_key(self, user_id: UUID) -> str:
         return f"user:{user_id}"
@@ -33,8 +42,7 @@ class UserService:
         if not user_entity:
             logger.error(
                 f"Entity 'User' with id {user_id} not found",
-                extra={"user_id": user_id}
-            )
+                extra=UserLogExtra(user_id=user_id))
             raise NotFoundException("User not found")
         return user_entity
 
@@ -42,19 +50,16 @@ class UserService:
         user_entity = user_in.to_model()
         db_user = await self.users_repo.create(user_entity)
         user_data = UserRead.model_validate(db_user)
-
         try:
             order = await self.order_client.create_order(
-                user_id=db_user.id,
+                user=db_user,
                 title=user_in.order_title,
                 price=user_in.order_price,
-                description=user_in.order_description,
-            )
+                description=user_in.order_description)
         except Exception as e:
             logger.error(f"Order creation failed, rolling back user {db_user.id}: {e}")
-            await self.users_repo.delete(db_user)
+            await self._compensate_create_user(db_user)
             raise
-
         return self._to_response(user_data, [order])
 
     async def update_user(self, user_id: UUID, user_in: UserUpdate):
@@ -73,11 +78,7 @@ class UserService:
 
     async def get_user_with_orders(self, user_id: UUID):
         user_entity = await self._get_user_or_fail(user_id)
-        if user_entity.profile:
-            user_entity.profile.user = None
-
         orders = await self.order_client.get_orders_by_user_id(user_id)
-
         user_data = UserRead.model_validate(user_entity)
         return self._to_response(user_data, orders)
 

@@ -8,10 +8,12 @@ from src.exceptions.not_found import NotFoundException
 import logging
 import json
 from src.config import settings
+from typing import TypedDict
 
 logger = logging.getLogger(__name__)
 
-
+class AuthorLogExtra(TypedDict):
+    author_id: UUID
 
 
 class AuthorService:
@@ -26,7 +28,8 @@ class AuthorService:
     async def _get_author_or_fail(self, author_id: UUID):
         author_entity = await self.authors_repo.get_by_id(author_id)
         if not author_entity:
-            logger.error(f"Entity 'Author' with id {author_id} not found", extra={"author_id": author_id})
+            logger.error(f"Entity 'Author' with id {author_id} not found",
+                         extra=AuthorLogExtra(author_id=author_id))
             raise NotFoundException("Author not found")
         return author_entity
 
