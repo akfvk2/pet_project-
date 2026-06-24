@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     cache_ttl: int = Field(default=3600, env="CACHE_TTL")
     retry_jitter: float = Field(default=1.0, env="RETRY_JITTER")
     retry_status_codes: list[int] = Field(default=[429, 500, 502, 503, 504], env="RETRY_STATUS_CODES")
+    http_timeout: float = Field(default=5.0, env="HTTP_TIMEOUT")
 
     class Config:
         env_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')

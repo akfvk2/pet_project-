@@ -16,3 +16,6 @@ class OrderNotFoundException(OrderServiceException):
 class OrderServiceUnavailableError(OrderServiceException):
     def __init__(self, message: str = "Order service unavailable"):
         super().__init__(status_code=503, message=message)
+
+class RetryableOrderServiceException(OrderServiceException):
+    pass

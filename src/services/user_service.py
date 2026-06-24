@@ -7,9 +7,10 @@ from uuid import UUID
 import logging
 from src.clients.order_client import OrderServiceClient
 from src.schemas.users import UserWithOrdersRead, UserCreateWithOrder
-from src.schemas.orders import OrderResponse
+from src.schemas.orders import OrderCreate
 from src.config import settings
 from typing import TypedDict
+from src.exceptions.order_service_error import OrderServiceException
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ class UserService:
     def _to_response(self, user_data: UserRead, orders: list) -> UserWithOrdersRead:
         return UserWithOrdersRead(
             **user_data.model_dump(),
-            orders=[OrderResponse(**o) for o in orders]
+            orders=orders
         )
 
     async def _get_user_or_fail(self, user_id: UUID):
@@ -53,10 +54,13 @@ class UserService:
         try:
             order = await self.order_client.create_order(
                 user=db_user,
-                title=user_in.order_title,
-                price=user_in.order_price,
-                description=user_in.order_description)
-        except Exception as e:
+                order_in=OrderCreate(
+                    title=user_in.order_title,
+                    price=user_in.order_price,
+                    description=user_in.order_description,
+                )
+            )
+        except OrderServiceException as e:
             logger.error(f"Order creation failed, rolling back user {db_user.id}: {e}")
             await self._compensate_create_user(db_user)
             raise

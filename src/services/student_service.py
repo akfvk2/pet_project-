@@ -59,7 +59,7 @@ class StudentService:
         await redis_client.setex(self._cache_key(student_id), settings.cache_ttl, schema.model_dump_json())
         return updated_student
 
-async def delete_student(self, student_id: UUID):
+    async def delete_student(self, student_id: UUID):
         students_entity = await self._get_student_or_fail(student_id)
         await self.students_repo.delete(students_entity)
         await redis_client.delete(self._cache_key(student_id))
