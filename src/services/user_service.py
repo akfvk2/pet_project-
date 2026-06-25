@@ -51,19 +51,14 @@ class UserService:
         user_entity = user_in.to_model()
         db_user = await self.users_repo.create(user_entity)
         user_data = UserRead.model_validate(db_user)
-        try:
-            order = await self.order_client.create_order(
-                user=db_user,
-                order_in=OrderCreate(
-                    title=user_in.order_title,
-                    price=user_in.order_price,
-                    description=user_in.order_description,
-                )
+        order = await self.order_client.create_order(
+            user=db_user,
+            order_in=OrderCreate(
+                title=user_in.order_title,
+                price=user_in.order_price,
+                description=user_in.order_description,
             )
-        except OrderServiceException as e:
-            logger.error(f"Order creation failed, rolling back user {db_user.id}: {e}")
-            await self._compensate_create_user(db_user)
-            raise
+        )
         return self._to_response(user_data, [order])
 
     async def update_user(self, user_id: UUID, user_in: UserUpdate):

@@ -20,7 +20,12 @@ class OrderServiceClient:
         self.base_url = settings.order_service_url
         self.client = httpx.AsyncClient()
 
-    def _handle_errors(self, url: str, response: httpx.Response) -> None:
+    def _parse_orders(self, response: httpx.Response) -> list[OrderResponse]:
+        return [OrderResponse(**item) for item in response.json()]
+
+    def _to_exception(self, url: str, response: httpx.Response) -> OrderServiceException | None:
+        if response.status_code < HTTPStatus.BAD_REQUEST:
+            return None
         if response.status_code == HTTPStatus.NOT_FOUND:
             logger.warning(f"Not found: {url}")
             raise OrderNotFoundException(response.text)
@@ -29,21 +34,21 @@ class OrderServiceClient:
             raise OrderServiceException(response.status_code, response.text)
         if response.status_code in settings.retry_status_codes:
             logger.error(f"Retryable error {response.status_code}: {url} {response.text}")
-            raise RetryableOrderServiceException(response.status_code, response.text)
-        if response.status_code >= HTTPStatus.BAD_REQUEST:
-            logger.error(f"Client error {response.status_code}: {url} {response.text}")
-            raise OrderServiceException(response.status_code, response.text)
+            return RetryableOrderServiceException(response.status_code, response.text)
+        logger.error(f"Client error {response.status_code}: {url} {response.text}")
+        return OrderServiceException(response.status_code, response.text)
+
+    def _handle_errors(self, url: str, response: httpx.Response) -> None:
+        exc = self._to_exception(url, response)
+        if exc:
+            raise exc
 
     def _handle_post_errors(self, url: str, response: httpx.Response) -> None:
-        if response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY:
-            logger.error(f"Validation error {response.status_code}: {url} {response.text}")
-            raise OrderServiceException(response.status_code, response.text)
-        if response.status_code >= HTTPStatus.INTERNAL_SERVER_ERROR:
-            logger.error(f"Service unavailable {response.status_code}: {url} {response.text}")
-            raise OrderServiceUnavailableError(response.text)
-        if response.status_code >= HTTPStatus.BAD_REQUEST:
-            logger.error(f"Client error {response.status_code}: {url} {response.text}")
-            raise OrderServiceException(response.status_code, response.text)
+        if response.status_code == HTTPStatus.NOT_FOUND:
+            return
+        exc = self._to_exception(url, response)
+        if exc:
+            raise exc
 
     @retry(
         stop=stop_after_attempt(settings.retry_max_attempts),
@@ -69,14 +74,14 @@ class OrderServiceClient:
         retry=retry_if_exception(_should_retry),
     )
     async def _post(self, url: str, **kwargs) -> httpx.Response:
-        response = await self.client.post(url, timeout=5.0, **kwargs)
+        response = await self.client.post(url, timeout=settings.http_timeout, **kwargs)
         self._handle_post_errors(url, response)
         return response
 
 
     async def get_orders_by_user_id(self, user_id: UUID) -> list[OrderResponse]:
         response = await self._get(f"{self.base_url}/v1/orders/by-user/{user_id}")
-        return [OrderResponse(**item) for item in response.json()]
+        return self._parse_orders(response)
 
 
     async def create_order(self, user: UserModel, order_in: OrderCreate) -> OrderResponse:
