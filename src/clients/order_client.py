@@ -13,7 +13,11 @@ logger = logging.getLogger(__name__)
 
 
 def _should_retry(exc: BaseException) -> bool:
-    return isinstance(exc, RetryableOrderServiceException)
+    if isinstance(exc, RetryableOrderServiceException):
+        return True
+    if isinstance(exc, (httpx.ConnectError, httpx.TimeoutException)):
+        return True
+    return False
 
 class OrderServiceClient:
     def __init__(self):
@@ -28,10 +32,10 @@ class OrderServiceClient:
             return None
         if response.status_code == HTTPStatus.NOT_FOUND:
             logger.warning(f"Not found: {url}")
-            raise OrderNotFoundException(response.text)
+            return OrderNotFoundException(response.text)
         if response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY:
             logger.error(f"Validation error {response.status_code}: {url} {response.text}")
-            raise OrderServiceException(response.status_code, response.text)
+            return OrderServiceException(response.status_code, response.text)
         if response.status_code in settings.retry_status_codes:
             logger.error(f"Retryable error {response.status_code}: {url} {response.text}")
             return RetryableOrderServiceException(response.status_code, response.text)

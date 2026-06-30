@@ -5,7 +5,7 @@ from src.schemas.profiles import ProfileBase, ProfileRead
 from uuid import UUID
 from src.exceptions.validation_error import ValidationException
 from src.schemas.orders import OrderResponse
-
+from src.schemas.orders import OrderCreate
 
 
 class UserBase(BaseModel):
@@ -138,3 +138,10 @@ class UserCreateWithOrder(UserCreate):
             profile_entity = ProfileModel(**self.profile.model_dump())
             user_entity.profile = profile_entity
         return user_entity
+
+    def to_order_create(self) -> "OrderCreate":
+        return OrderCreate(
+            title=self.order_title,
+            price=self.order_price,
+            description=self.order_description,
+        )

@@ -46,8 +46,6 @@ class AuthorService:
             return authors.AuthorRead.model_validate(json.loads(cached))
 
         author_entity = await self._get_author_or_fail(author_id)
-        for book in author_entity.books:
-            book.author = None
         result = authors.AuthorRead.model_validate(author_entity)
         await redis_client.setex(cache_key, settings.cache_ttl, result.model_dump_json())
         return result

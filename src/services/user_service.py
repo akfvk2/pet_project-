@@ -1,4 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.schemas import orders
 from src.schemas.users import UserUpdate, UserRead
 from src.repositories.user import UserRepository
 from src.exceptions.not_found import NotFoundException
@@ -50,15 +52,15 @@ class UserService:
     async def create_user(self, user_in: UserCreateWithOrder) -> UserWithOrdersRead:
         user_entity = user_in.to_model()
         db_user = await self.users_repo.create(user_entity)
-        user_data = UserRead.model_validate(db_user)
-        order = await self.order_client.create_order(
-            user=db_user,
-            order_in=OrderCreate(
-                title=user_in.order_title,
-                price=user_in.order_price,
-                description=user_in.order_description,
+        try:
+            order = await self.order_client.create_order(
+                user=db_user,
+                order_in=user_in.to_order_create()
             )
-        )
+        except OrderServiceException:
+            await self._compensate_create_user(db_user)
+            raise
+        user_data = UserRead.model_validate(db_user)
         return self._to_response(user_data, [order])
 
     async def update_user(self, user_id: UUID, user_in: UserUpdate):
