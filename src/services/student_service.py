@@ -27,11 +27,9 @@ class StudentService:
     async def _get_student_or_fail(self, student_id: UUID):
         student_entity = await self.students_repo.get_by_id(student_id)
         if not student_entity:
-            logger.error(
-                "Entity 'Student' not found",
-                extra=StudentLogExtra(student_id=student_id)
-            )
-            raise NotFoundException(f"Student with id {student_id} not found")
+            logger.error(f"Entity 'Student' with id {student_id} not found",
+                         extra=StudentLogExtra(student_id=student_id))
+            raise NotFoundException(f"Student not found")
         return student_entity
 
     async def create_student(self, student_in: students.StudentCreate):

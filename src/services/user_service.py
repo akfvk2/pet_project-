@@ -9,10 +9,11 @@ from uuid import UUID
 import logging
 from src.clients.order_client import OrderServiceClient
 from src.schemas.users import UserWithOrdersRead, UserCreateWithOrder
-from src.schemas.orders import OrderCreate
+from src.schemas.orders import OrderResponse
 from src.config import settings
 from typing import TypedDict
-from src.exceptions.order_service_error import OrderServiceException
+from src.exceptions.order_service_error import ServiceException, ServiceUnreachableException
+from src.models.pending_order_confirmation import PendingOrderConfirmationModel
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ class UserService:
     def _cache_key(self, user_id: UUID) -> str:
         return f"user:{user_id}"
 
-    def _to_response(self, user_data: UserRead, orders: list) -> UserWithOrdersRead:
+    def _to_response(self, user_data: UserRead, orders: list[OrderResponse]) -> UserWithOrdersRead:
         return UserWithOrdersRead(
             **user_data.model_dump(),
             orders=orders
@@ -57,7 +58,11 @@ class UserService:
                 user=db_user,
                 order_in=user_in.to_order_create()
             )
-        except OrderServiceException:
+        except ServiceUnreachableException:
+            self.session.add(PendingOrderConfirmationModel(user_id=db_user.id))
+            await self.session.commit()
+            raise
+        except ServiceException:
             await self._compensate_create_user(db_user)
             raise
         user_data = UserRead.model_validate(db_user)

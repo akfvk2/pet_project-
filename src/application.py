@@ -5,10 +5,17 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter
 from src.routers.v1 import users, authors, students
 from src.exceptions.base import AppException, app_exception_handler
+import asyncio
+import contextlib
+from src.worker.order_reconciliation import run_reconciliation_worker
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    task = asyncio.create_task(run_reconciliation_worker())
     yield
+    task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await task
 
 
 def get_app() -> FastAPI:
