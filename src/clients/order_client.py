@@ -1,14 +1,18 @@
-from typing import NoReturn, Callable
-
 import httpx
 import logging
 from uuid import UUID
 from tenacity import retry, stop_after_attempt, wait_exponential_jitter, retry_if_exception
 from src.config import settings
-from src.exceptions.order_service_error import ServiceException, NotFoundException, NonRetryableException, RetryableException, ServiceUnreachableException
+from src.exceptions.service_exception import ServiceException
+from src.exceptions.not_found import NotFoundException
+from src.exceptions.non_retryable import NonRetryableException
+from src.exceptions.retryable import RetryableException
+from src.exceptions.service_unreachable import ServiceUnreachableException
 from src.schemas.orders import OrderCreateRequest, OrderResponse, OrderCreate
 from src.models.user import UserModel
 from http import HTTPStatus
+from typing import NoReturn
+
 
 logger = logging.getLogger(__name__)
 
@@ -28,39 +32,18 @@ class OrderServiceClient:
     def _to_exception(self, url: str, response: httpx.Response) -> ServiceException | None:
         if response.status_code < HTTPStatus.BAD_REQUEST:
             return None
-        handlers: dict[int, Callable[[str, httpx.Response], ServiceException]] = {
-            HTTPStatus.NOT_FOUND: self._not_found_exception,
-            HTTPStatus.UNPROCESSABLE_ENTITY: self._validation_exception,
-        }
-        handler = handlers.get(response.status_code, self._default_exception)
-        return handler(url, response)
-
-    def _not_found_exception(self, url: str, response: httpx.Response) -> ServiceException:
-        logger.warning(f"Not found: {url}")
-        return NotFoundException(response.text)
-
-    def _validation_exception(self, url: str, response: httpx.Response) -> ServiceException:
-        logger.error(f"Validation error {response.status_code}: {url} {response.text}")
-        return NonRetryableException(response.status_code, response.text)
-
-    def _default_exception(self, url: str, response: httpx.Response) -> ServiceException:
+        if response.status_code == HTTPStatus.NOT_FOUND:
+            logger.warning(f"Not found: {url}")
+            return NotFoundException(response.text)
+        if response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY:
+            logger.error(f"Validation error {response.status_code}: {url} {response.text}")
+            return NonRetryableException(response.status_code, response.text)
         if response.status_code in settings.retry_status_codes:
             logger.error(f"Retryable error {response.status_code}: {url} {response.text}")
             return RetryableException(response.status_code, response.text)
         logger.error(f"Client error {response.status_code}: {url} {response.text}")
         return NonRetryableException(response.status_code, response.text)
 
-    def _handle_errors(self, url: str, response: httpx.Response) -> None:
-        exc = self._to_exception(url, response)
-        if exc:
-            raise exc
-
-    def _handle_post_errors(self, url: str, response: httpx.Response) -> None:
-        if response.status_code == HTTPStatus.NOT_FOUND:
-            return
-        exc = self._to_exception(url, response)
-        if exc:
-            raise exc
 
     def _handle_connection_error(self, url: str, exc: Exception) -> NoReturn:
         logger.error(f"Connection error: {url} {exc}")
@@ -80,7 +63,9 @@ class OrderServiceClient:
             response = await self.client.get(url, timeout=settings.http_timeout, **kwargs)
         except (httpx.ConnectError, httpx.TimeoutException) as exc:
             self._handle_connection_error(url, exc)
-        self._handle_errors(url, response)
+        exc = self._to_exception(url, response)
+        if exc:
+            raise exc
         return response
 
     @retry(
@@ -97,7 +82,10 @@ class OrderServiceClient:
             response = await self.client.post(url, timeout=settings.http_timeout, **kwargs)
         except (httpx.ConnectError, httpx.TimeoutException) as exc:
             self._handle_connection_error(url, exc)
-        self._handle_post_errors(url, response)
+        if response.status_code != HTTPStatus.NOT_FOUND:
+            exc = self._to_exception(url, response)
+            if exc:
+                raise exc
         return response
 
 
@@ -106,13 +94,18 @@ class OrderServiceClient:
         return self._parse_orders(response)
 
 
-    async def create_order(self, user: UserModel, order_in: OrderCreate) -> OrderResponse:
+    async def create_order(self, user: UserModel, order_in: OrderCreate, reference_id: UUID) -> OrderResponse:
         payload = OrderCreateRequest(
             **order_in.model_dump(),
-            user_id=user.id
+            user_id=user.id,
+            reference_id=reference_id,
         )
         response = await self._post(
             f"{self.base_url}/v1/orders/",
             json=payload.model_dump(mode="json"),
         )
         return OrderResponse(**response.json())
+
+    async def get_order_by_reference_id(self, user_id: UUID, reference_id: UUID) -> OrderResponse | None:
+        orders = await self.get_orders_by_user_id(user_id)
+        return next((o for o in orders if o.reference_id == reference_id), None)

@@ -1,7 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.repositories.student import StudentRepository
-from src.exceptions.not_found import NotFoundException
-from src.models import student, course
 from src.cache import redis_client
 from src.schemas import students
 from uuid import UUID
@@ -25,12 +23,9 @@ class StudentService:
         return f"student:{student_id}"
 
     async def _get_student_or_fail(self, student_id: UUID):
-        student_entity = await self.students_repo.get_by_id(student_id)
-        if not student_entity:
-            logger.error(f"Entity 'Student' with id {student_id} not found",
-                         extra=StudentLogExtra(student_id=student_id))
-            raise NotFoundException(f"Student not found")
-        return student_entity
+        return await self.students_repo.get_by_id_or_fail(
+            student_id, "Student", extra=StudentLogExtra(student_id=student_id)
+        )
 
     async def create_student(self, student_in: students.StudentCreate):
         students_entity = student_in.to_model()

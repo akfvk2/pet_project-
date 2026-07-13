@@ -36,7 +36,7 @@ class OrderCreate(BaseModel):
 
 class OrderCreateRequest(OrderCreate):
     user_id: UUID
-
+    reference_id: UUID
 
 
 class OrderResponse(BaseModel):
@@ -45,3 +45,4 @@ class OrderResponse(BaseModel):
     price: float
     description: str
     status: str
+    reference_id: UUID | None = None

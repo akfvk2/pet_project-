@@ -1,10 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.schemas import authors
-from src.models import author, book
 from src.repositories.author import AuthorRepository
 from src.cache import redis_client
 from uuid import UUID
-from src.exceptions.not_found import NotFoundException
 import logging
 import json
 from src.config import settings
@@ -26,12 +24,9 @@ class AuthorService:
         return f"author:{author_id}"
 
     async def _get_author_or_fail(self, author_id: UUID):
-        author_entity = await self.authors_repo.get_by_id(author_id)
-        if not author_entity:
-            logger.error(f"Entity 'Author' with id {author_id} not found",
-                         extra=AuthorLogExtra(author_id=author_id))
-            raise NotFoundException("Author not found")
-        return author_entity
+        return await self.authors_repo.get_by_id_or_fail(
+            author_id, "Author", extra=AuthorLogExtra(author_id=author_id)
+        )
 
     async def create_author(self, author_in: authors.AuthorCreate):
         author_entity = author_in.to_model()
