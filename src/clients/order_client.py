@@ -58,39 +58,21 @@ class OrderServiceClient:
         ),
         retry=retry_if_exception(_should_retry),
     )
-    async def _get(self, url: str, **kwargs) -> httpx.Response:
+    async def _request(self, method: str, url: str, **kwargs) -> httpx.Response:
         try:
-            response = await self.client.get(url, timeout=settings.http_timeout, **kwargs)
+            response = await self.client.request(method, url, timeout=settings.http_timeout, **kwargs)
         except (httpx.ConnectError, httpx.TimeoutException) as exc:
             self._handle_connection_error(url, exc)
+        if method == "POST" and response.status_code == HTTPStatus.NOT_FOUND:
+            return response
         exc = self._to_exception(url, response)
         if exc:
             raise exc
         return response
 
-    @retry(
-        stop=stop_after_attempt(settings.retry_max_attempts),
-        wait=wait_exponential_jitter(
-            initial=settings.retry_initial_wait,
-            max=settings.retry_max_wait,
-            jitter=settings.retry_jitter,
-        ),
-        retry=retry_if_exception(_should_retry),
-    )
-    async def _post(self, url: str, **kwargs) -> httpx.Response:
-        try:
-            response = await self.client.post(url, timeout=settings.http_timeout, **kwargs)
-        except (httpx.ConnectError, httpx.TimeoutException) as exc:
-            self._handle_connection_error(url, exc)
-        if response.status_code != HTTPStatus.NOT_FOUND:
-            exc = self._to_exception(url, response)
-            if exc:
-                raise exc
-        return response
-
 
     async def get_orders_by_user_id(self, user_id: UUID) -> list[OrderResponse]:
-        response = await self._get(f"{self.base_url}/v1/orders/by-user/{user_id}")
+        response = await self._request(f"{self.base_url}/v1/orders/by-user/{user_id}")
         return self._parse_orders(response)
 
 
@@ -100,7 +82,7 @@ class OrderServiceClient:
             user_id=user.id,
             reference_id=reference_id,
         )
-        response = await self._post(
+        response = await self._request(
             f"{self.base_url}/v1/orders/",
             json=payload.model_dump(mode="json"),
         )

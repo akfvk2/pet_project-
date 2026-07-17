@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     retry_max_wait: float = Field(default=5.0, env="RETRY_MAX_WAIT")
     cache_ttl: int = Field(default=3600, env="CACHE_TTL")
     retry_jitter: float = Field(default=1.0, env="RETRY_JITTER")
-    retry_status_codes: list[int] = Field(default=[408, 429, 500, 502, 503, 504], env="RETRY_STATUS_CODES")
+    retry_status_codes: set[int] = Field(default=[408, 429, 500, 502, 503, 504], env="RETRY_STATUS_CODES")
     http_timeout: float = Field(default=5.0, env="HTTP_TIMEOUT")
     reconciliation_interval_seconds: float = Field(default=30.0, env="RECONCILIATION_INTERVAL_SECONDS")
     reconciliation_max_attempts: int = Field(default=5, env="RECONCILIATION_MAX_ATTEMPTS")

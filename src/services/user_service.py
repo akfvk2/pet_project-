@@ -44,7 +44,6 @@ class UserService:
     async def create_user(self, user_in: UserCreateWithOrder) -> UserWithOrdersRead:
         user_entity = user_in.to_model()
         db_user = await self.users_repo.create(user_entity)
-        await self.session.commit()
         reference_id = uuid4()
         orders: list[OrderResponse] = []
         try:
