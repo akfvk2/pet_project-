@@ -6,6 +6,7 @@ from uuid import UUID
 from src.exceptions.validation_error import ValidationException
 from src.schemas.orders import OrderResponse
 from src.schemas.orders import OrderCreate
+from typing import Literal
 
 
 class UserBase(BaseModel):
@@ -121,7 +122,7 @@ class UserWithOrdersRead(UserBase):
     id: UUID
     profile: Optional[ProfileRead] = None
     orders: list[OrderResponse] = []
-
+    order_status: Literal["confirmed", "pending"] = "confirmed"
     model_config = ConfigDict(from_attributes=True)
 
 class UserCreateWithOrder(UserCreate):

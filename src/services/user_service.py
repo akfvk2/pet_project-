@@ -10,7 +10,6 @@ from src.schemas.orders import OrderResponse
 from src.config import settings
 from typing import TypedDict
 from src.exceptions.service_exception import ServiceException
-from src.exceptions.service_unreachable import ServiceUnreachableException
 from src.models.pending_order_confirmation import PendingOrderConfirmationModel
 
 logger = logging.getLogger(__name__)
@@ -30,10 +29,12 @@ class UserService:
     def _cache_key(self, user_id: UUID) -> str:
         return f"user:{user_id}"
 
-    def _to_response(self, user_data: UserRead, orders: list[OrderResponse]) -> UserWithOrdersRead:
+    def _to_response(self, user_data: UserRead, orders: list[OrderResponse], order_status: str = "confirmed") -> UserWithOrdersRead:
         return UserWithOrdersRead(
             **user_data.model_dump(),
-            orders=orders
+            orders=orders,
+            order_status=order_status,
+
         )
 
     async def _get_user_or_fail(self, user_id: UUID):
@@ -46,6 +47,7 @@ class UserService:
         db_user = await self.users_repo.create(user_entity)
         reference_id = uuid4()
         orders: list[OrderResponse] = []
+        order_status = "confirmed"
         try:
             order = await self.order_client.create_order(
                 user=db_user,
@@ -55,9 +57,9 @@ class UserService:
             orders = [order]
         except ServiceException:
             self.session.add(PendingOrderConfirmationModel(user_id=db_user.id, reference_id=reference_id))
-
+            order_status = "pending"
         user_data = UserRead.model_validate(db_user)
-        return self._to_response(user_data, orders)
+        return self._to_response(user_data, orders, order_status)
 
     async def update_user(self, user_id: UUID, user_in: UserUpdate):
         users_entity = await self._get_user_or_fail(user_id)
