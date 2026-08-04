@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     http_timeout: float = Field(default=5.0, env="HTTP_TIMEOUT")
     reconciliation_interval_seconds: float = Field(default=30.0, env="RECONCILIATION_INTERVAL_SECONDS")
     reconciliation_max_attempts: int = Field(default=5, env="RECONCILIATION_MAX_ATTEMPTS")
+    reconciliation_stale_in_progress_seconds: int = Field(default=300, env="RECONCILIATION_STALE_IN_PROGRESS_SECONDS")
 
     class Config:
         env_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')

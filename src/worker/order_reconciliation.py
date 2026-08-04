@@ -1,36 +1,47 @@
 import asyncio
 import logging
 from uuid import UUID
-
+from contextlib import asynccontextmanager
 from src.db import SessionFactory
 from src.config import settings
-from src.repositories.pending_order_confirmation import PendingOrderConfirmationRepository, PENDING, NEEDS_REVIEW
+from src.repositories.pending_order_confirmation import PendingOrderConfirmationRepository, PendingOrderConfirmationStatus
 from src.clients.order_client import OrderServiceClient
 from src.exceptions.service_exception import ServiceException
+from enum import Enum
+
 
 logger = logging.getLogger(__name__)
 _order_client = OrderServiceClient()
-_repo: PendingOrderConfirmationRepository | None = None
 
-def _get_repo(session) -> PendingOrderConfirmationRepository:
-    global _repo
-    if _repo is None:
-        _repo = PendingOrderConfirmationRepository(session)
-    else:
-        _repo.session = session
-    return _repo
+class ReconciliationOutcome(str, Enum):
+    FOUND = "found"
+    NOT_FOUND = "not_found"
+    UNREACHABLE = "unreachable"
+
+@asynccontextmanager
+async def _repo_session():
+    async with SessionFactory() as session:
+        yield PendingOrderConfirmationRepository(session)
 
 async def _claim_batch(batch_size: int = 20):
-    async with SessionFactory() as session:
-        repo = _get_repo(session)
-        claimed = await repo.claim_batch(batch_size)
-        await session.commit()
-        return claimed
+    async with _repo_session() as repo:
+        return await repo.claim_batch(batch_size)
 
+async def _apply_outcome(repo: PendingOrderConfirmationRepository, row, outcome: ReconciliationOutcome) -> None:
+    if outcome == ReconciliationOutcome.FOUND:
+        await repo.delete(row)
+        return
+    row.attempts += 1
+    if outcome == ReconciliationOutcome.NOT_FOUND and row.attempts >= settings.reconciliation_max_attempts:
+        logger.error(
+            f"Reconciliation: order genuinely not found for user {row.user_id} after {row.attempts} checks — needs manual review"
+        )
+        row.status = PendingOrderConfirmationStatus.NEEDS_REVIEW
+    else:
+        row.status = PendingOrderConfirmationStatus.PENDING
 
 async def _process_row(row_id: UUID) -> None:
-    async with SessionFactory() as session:
-        repo = _get_repo(session)
+    async with _repo_session() as repo:
         row = await repo.get_by_id(row_id)
         if row is None:
             return
@@ -39,39 +50,19 @@ async def _process_row(row_id: UUID) -> None:
     try:
         existing_orders = await _order_client.get_orders_by_user_id(user_id)
         existing_order = next((o for o in existing_orders if o.reference_id == reference_id), None)
-        outcome = "found" if existing_order else "not_found"
+        outcome = ReconciliationOutcome.FOUND if existing_order else ReconciliationOutcome.NOT_FOUND
     except ServiceException:
-        outcome = "unreachable"
+        outcome = ReconciliationOutcome.UNREACHABLE
     except Exception:
         logger.exception(f"Reconciliation: unexpected error checking user {user_id}")
         raise
-    async with SessionFactory() as session:
-        repo = _get_repo(session)
+    async with _repo_session() as repo:
         row = await repo.get_by_id(row_id)
         if row is None:
             return
         try:
-            if outcome == "found":
-                await repo.delete(row)
-            elif outcome == "not_found":
-                row.attempts += 1
-                if row.attempts >= settings.reconciliation_max_attempts:
-                    logger.error(
-                        f"Reconciliation: order genuinely not found for user {row.user_id} after {row.attempts} checks — needs manual review"
-                    )
-                    row.status = NEEDS_REVIEW
-                else:
-                    row.status = PENDING
-            else:
-                row.attempts += 1
-                if row.attempts >= settings.reconciliation_max_attempts:
-                    logger.error(
-                        f"Reconciliation: user {row.user_id} still has no confirmed order after {row.attempts} checks — needs manual review"
-                    )
-                    row.status = NEEDS_REVIEW
-                else:
-                    row.status = PENDING
-            await session.commit()
+            await _apply_outcome(repo, row, outcome)
+            await repo.session.commit()
         except Exception:
             logger.exception(f"Reconciliation: failed to persist result for row {row_id}")
             raise

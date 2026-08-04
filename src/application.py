@@ -8,6 +8,7 @@ from src.exceptions.base import AppException, app_exception_handler
 import asyncio
 import contextlib
 from src.worker.order_reconciliation import run_reconciliation_worker
+from src.clients.order_client import order_service_client
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -16,6 +17,7 @@ async def lifespan(app: FastAPI):
     task.cancel()
     with contextlib.suppress(asyncio.CancelledError):
         await task
+    await order_service_client.close()
 
 
 def get_app() -> FastAPI:

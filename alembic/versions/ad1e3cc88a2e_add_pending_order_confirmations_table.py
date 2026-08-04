@@ -23,7 +23,7 @@ def upgrade() -> None:
     op.create_table('pending_order_confirmations',
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('user_id', sa.Uuid(), nullable=False),
-    sa.Column('reference_id', sa.Uuid(), nullable=False),
+    sa.Column('reference_id', sa.Uuid(), nullable=False, unique=True),
     sa.Column('status', sa.String(), nullable=False),
     sa.Column('attempts', sa.Integer(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),

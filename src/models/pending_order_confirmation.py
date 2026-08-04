@@ -10,6 +10,6 @@ class PendingOrderConfirmationModel(Base):
     __tablename__ = 'pending_order_confirmations'
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
-    reference_id: Mapped[UUID] = mapped_column(default=uuid4)
+    reference_id: Mapped[UUID] = mapped_column(default=uuid4, unique=True)
     status: Mapped[str] = mapped_column(sa.String(), default="pending")
     attempts: Mapped[int] = mapped_column(sa.Integer(), default=0)

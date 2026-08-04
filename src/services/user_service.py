@@ -4,7 +4,7 @@ from src.repositories.user import UserRepository
 from src.cache import redis_client
 from uuid import UUID, uuid4
 import logging
-from src.clients.order_client import OrderServiceClient
+from src.clients.order_client import order_service_client
 from src.schemas.users import UserWithOrdersRead, UserCreateWithOrder
 from src.schemas.orders import OrderResponse
 from src.config import settings
@@ -23,7 +23,7 @@ class UserService:
     def __init__(self, session: AsyncSession):
         self.session = session
         self.users_repo = UserRepository(self.session)
-        self.order_client = OrderServiceClient()
+        self.order_client = order_service_client
 
 
     def _cache_key(self, user_id: UUID) -> str:
@@ -50,7 +50,7 @@ class UserService:
         order_status = "confirmed"
         try:
             order = await self.order_client.create_order(
-                user=db_user,
+                user_id=db_user.id,
                 order_in=user_in.to_order_create(),
                 reference_id=reference_id
             )
@@ -77,7 +77,8 @@ class UserService:
 
     async def get_user_with_orders(self, user_id: UUID):
         user_entity = await self._get_user_or_fail(user_id)
-        orders = await self.order_client.get_orders_by_user_id(user_id)
         user_data = UserRead.model_validate(user_entity)
+        await self.session.close()
+        orders = await self.order_client.get_orders_by_user_id(user_id)
         return self._to_response(user_data, orders)
 
