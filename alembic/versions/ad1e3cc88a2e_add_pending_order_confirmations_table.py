@@ -26,6 +26,7 @@ def upgrade() -> None:
     sa.Column('reference_id', sa.Uuid(), nullable=False, unique=True),
     sa.Column('status', sa.String(), nullable=False),
     sa.Column('attempts', sa.Integer(), nullable=False),
+    sa.Column('next_check_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('is_deleted', sa.Boolean(), nullable=False),

@@ -1,4 +1,4 @@
-from src.exceptions.service_exception import ServiceException
+from src.exceptions.external_service_exception import ExternalServiceException
 
-class RetryableException(ServiceException):
+class RetryableException(ExternalServiceException):
     pass

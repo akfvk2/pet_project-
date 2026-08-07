@@ -1,9 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from  typing import TypeVar, Generic, Type
 from src.models.base_model import Base
 from uuid import UUID
-from src.exceptions.not_found import NotFoundException
 import logging
 
 ModelType = TypeVar("ModelType", bound=Base)
@@ -34,9 +32,3 @@ class BaseRepository(Generic[ModelType]):
         obj.is_deleted = True
         return True
 
-    async def get_by_id_or_fail(self, obj_id: UUID, entity_name: str, extra: dict | None = None) -> ModelType:
-        entity = await self.get_by_id(obj_id)
-        if not entity:
-            logger.error(f"Entity '{entity_name}' with id {obj_id} not found", extra=extra)
-            raise NotFoundException(f"{entity_name} not found")
-        return entity

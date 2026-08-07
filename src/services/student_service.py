@@ -7,6 +7,8 @@ import logging
 import json
 from src.config import settings
 from typing import TypedDict
+from src.services.service_helpers import get_by_id_or_fail
+
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +25,8 @@ class StudentService:
         return f"student:{student_id}"
 
     async def _get_student_or_fail(self, student_id: UUID):
-        return await self.students_repo.get_by_id_or_fail(
-            student_id, "Student", extra=StudentLogExtra(student_id=student_id)
+        return await get_by_id_or_fail(
+            self.students_repo, student_id, "Student", extra=StudentLogExtra(student_id=student_id)
         )
 
     async def create_student(self, student_in: students.StudentCreate):

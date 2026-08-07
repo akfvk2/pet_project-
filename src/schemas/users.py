@@ -7,6 +7,7 @@ from src.exceptions.validation_error import ValidationException
 from src.schemas.orders import OrderResponse
 from src.schemas.orders import OrderCreate
 from typing import Literal
+from enum import Enum
 
 
 class UserBase(BaseModel):
@@ -118,11 +119,15 @@ class UserRead(UserBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+class OrderConfirmationStatus(str, Enum):
+    CONFIRMED = "confirmed"
+    PENDING = "pending"
+
 class UserWithOrdersRead(UserBase):
     id: UUID
     profile: Optional[ProfileRead] = None
     orders: list[OrderResponse] = []
-    order_status: Literal["confirmed", "pending"] = "confirmed"
+    order_status: OrderConfirmationStatus = OrderConfirmationStatus.CONFIRMED
     model_config = ConfigDict(from_attributes=True)
 
 class UserCreateWithOrder(UserCreate):
@@ -146,3 +151,4 @@ class UserCreateWithOrder(UserCreate):
             price=self.order_price,
             description=self.order_description,
         )
+

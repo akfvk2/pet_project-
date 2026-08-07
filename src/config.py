@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     reconciliation_interval_seconds: float = Field(default=30.0, env="RECONCILIATION_INTERVAL_SECONDS")
     reconciliation_max_attempts: int = Field(default=5, env="RECONCILIATION_MAX_ATTEMPTS")
     reconciliation_stale_in_progress_seconds: int = Field(default=300, env="RECONCILIATION_STALE_IN_PROGRESS_SECONDS")
+    reconciliation_unreachable_alert_attempts: int = Field(default=10, env="RECONCILIATION_UNREACHABLE_ALERT_ATTEMPTS")
+    reconciliation_concurrency: int = Field(default=5, env="RECONCILIATION_CONCURRENCY")
+    reconciliation_unreachable_backoff_max_seconds: float = Field(default=3600.0,env="RECONCILIATION_UNREACHABLE_BACKOFF_MAX_SECONDS")
 
     class Config:
         env_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')

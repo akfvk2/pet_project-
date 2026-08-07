@@ -7,6 +7,8 @@ import logging
 import json
 from src.config import settings
 from typing import TypedDict
+from src.services.service_helpers import get_by_id_or_fail
+
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +26,8 @@ class AuthorService:
         return f"author:{author_id}"
 
     async def _get_author_or_fail(self, author_id: UUID):
-        return await self.authors_repo.get_by_id_or_fail(
-            author_id, "Author", extra=AuthorLogExtra(author_id=author_id)
+        return await get_by_id_or_fail(
+            self.authors_repo, author_id, "Author", extra=AuthorLogExtra(author_id=author_id)
         )
 
     async def create_author(self, author_in: authors.AuthorCreate):
