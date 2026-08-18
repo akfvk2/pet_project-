@@ -4,4 +4,4 @@ from src.models.author import Author
 from src.models.book import Book
 from src.models.course import Course
 from src.models.student import Students
-from src.models.pending_order_confirmation import PendingOrderConfirmationModel
+from src.models.pending_confirmation import PendingConfirmationModel

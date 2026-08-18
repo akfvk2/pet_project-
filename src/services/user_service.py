@@ -4,7 +4,7 @@ from src.repositories.user import UserRepository
 from src.cache import redis_client
 from uuid import UUID, uuid4
 import logging
-from src.clients.order_client import OrderServiceClient, get_order_client
+from src.clients.order_client import OrderServiceClient
 from src.schemas.users import UserWithOrdersRead, UserCreateWithOrder
 from src.schemas.orders import OrderResponse
 from src.config import settings
@@ -13,8 +13,8 @@ from src.exceptions.external_service_exception import ExternalServiceException
 from src.services.service_helpers import get_by_id_or_fail
 from src.services.user_mapper import UserMapper
 from src.schemas.users import OrderConfirmationStatus
-from src.services.order_recovery import OrderRecovery
-from src.exceptions.retryable import RetryableException
+from src.repositories.pending_confirmation import PendingConfirmationRepository
+
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class UserService:
         self.session = session
         self.users_repo = UserRepository(self.session)
         self.order_client = order_client
-        self.order_recovery = OrderRecovery(self.session)
+        self.pending_confirmation_repo = PendingConfirmationRepository(self.session)
 
 
     def _cache_key(self, user_id: UUID) -> str:
@@ -44,21 +44,18 @@ class UserService:
         user_entity = user_in.to_model()
         db_user = await self.users_repo.create(user_entity)
         user_data = UserRead.model_validate(db_user)
-        reference_id = self.order_recovery.new_reference_id()
-        self.order_recovery.register_pending(db_user.id, reference_id)
+        reference_id = uuid4()
+        self.pending_confirmation_repo.register_pending(db_user.id, reference_id)
         await self.session.commit()
-        await self.session.close()
         try:
             order = await self.order_client.create_order(
                 user_id=db_user.id,
                 order_in=user_in.to_order_create(),
                 reference_id=reference_id
             )
-        except RetryableException:
-            return UserMapper.to_user_with_orders(user_data, [], OrderConfirmationStatus.PENDING)
         except ExternalServiceException:
-            raise
-        await self.order_recovery.resolve_pending(reference_id)
+            return UserMapper.to_user_with_orders(user_data, [], OrderConfirmationStatus.PENDING)
+        await self.pending_confirmation_repo.resolve_pending(reference_id)
         await self.session.commit()
         return UserMapper.to_user_with_orders(user_data, [order], OrderConfirmationStatus.CONFIRMED)
 
