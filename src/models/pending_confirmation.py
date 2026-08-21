@@ -16,3 +16,4 @@ class PendingConfirmationModel(Base):
     unreachable_attempts: Mapped[int] = mapped_column(sa.Integer(), nullable=False, server_default="0", default=0)
     next_check_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True, default=None)
     operation_type: Mapped[str] = mapped_column(sa.String(), nullable=False, server_default="order_confirmation", default="order_confirmation")
+    version: Mapped[int] = mapped_column(sa.Integer(), nullable=False, server_default="0", default=0)

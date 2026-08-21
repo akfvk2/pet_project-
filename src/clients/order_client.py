@@ -18,11 +18,10 @@ def _should_retry(exc: BaseException) -> bool:
     return isinstance(exc, RetryableException)
 
 class OrderServiceClient:
-    ORDERS_PATH = "/v1/orders"
-
     def __init__(self):
         self.base_url = settings.order_service_url
         self.client = httpx.AsyncClient()
+
 
     async def close(self) -> None:
         await self.client.aclose()
@@ -48,12 +47,15 @@ class OrderServiceClient:
             jitter=settings.retry_jitter,
         ),
         retry=retry_if_exception(_should_retry),
+        reraise=True,
     )
     async def get_orders_by_user_id(self, user_id: UUID) -> list[OrderResponse]:
-        url = f"{self.base_url}{self.ORDERS_PATH}"
+        url = f"{self.base_url}{settings.orders_path}"
         response = await self._request("GET", url, params={"user_id": str(user_id)})
+        if response.status_code == HTTPStatus.NOT_FOUND:
+            return []
         self._handle_response_errors(response)
-        return [OrderResponse.model_validate(item) for item in response.json()]
+        return OrderMapper.to_orders(response.json())
 
 
     @retry(
@@ -64,19 +66,14 @@ class OrderServiceClient:
             jitter=settings.retry_jitter,
         ),
         retry=retry_if_exception(_should_retry),
+        reraise=True,
     )
     async def create_order(self, user_id: UUID, order_in: OrderCreate, reference_id: UUID) -> OrderResponse:
         payload = OrderMapper.to_create_request(order_in, user_id, reference_id)
-        url = f"{self.base_url}{self.ORDERS_PATH}"
+        url = f"{self.base_url}{settings.orders_path}"
         response = await self._request("POST", url, json=payload.model_dump())
         self._handle_response_errors(response)
-        return OrderResponse.model_validate(response.json())
-
-    async def get_order_by_reference_id(self, reference_id: UUID) -> OrderResponse | None:
-        url = f"{self.base_url}{self.ORDERS_PATH}/by-reference/{reference_id}"
-        response = await self._request("GET", url)
-        self._handle_response_errors(response)
-        return OrderResponse.model_validate(response.json())
+        return OrderMapper.to_order(response.json())
 
 _order_service_client: OrderServiceClient | None = None
 

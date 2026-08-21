@@ -6,12 +6,11 @@ from uuid import UUID, uuid4
 import logging
 from src.clients.order_client import OrderServiceClient
 from src.schemas.users import UserWithOrdersRead, UserCreateWithOrder
-from src.schemas.orders import OrderResponse
 from src.config import settings
 from typing import TypedDict
 from src.exceptions.external_service_exception import ExternalServiceException
 from src.services.service_helpers import get_by_id_or_fail
-from src.services.user_mapper import UserMapper
+from src.mappers.user_mapper import UserMapper
 from src.schemas.users import OrderConfirmationStatus
 from src.repositories.pending_confirmation import PendingConfirmationRepository
 
@@ -46,7 +45,6 @@ class UserService:
         user_data = UserRead.model_validate(db_user)
         reference_id = uuid4()
         self.pending_confirmation_repo.register_pending(db_user.id, reference_id)
-        await self.session.commit()
         try:
             order = await self.order_client.create_order(
                 user_id=db_user.id,

@@ -38,26 +38,31 @@ class PendingConfirmationRepository(BaseRepository[PendingConfirmationModel]):
         stmt = (
             update(self.model)
             .where(self.model.id.in_(subquery))
-            .values(status=PendingConfirmationStatus.IN_PROGRESS)
+            .values(status=PendingConfirmationStatus.IN_PROGRESS, version=self.model.version + 1)
             .returning(self.model)
         )
         result = await self.session.execute(stmt)
         claimed = list(result.scalars().all())
         return claimed
 
-    async def save_if_in_progress(self, row_id: UUID, status: str, not_found_attempts: int, unreachable_attempts: int, next_check_at: datetime) -> bool:
+    async def save_if_in_progress(self, row_id: UUID, status: str, not_found_attempts: int, unreachable_attempts: int,
+                                  next_check_at: datetime, expected_version: int) -> bool:
         stmt = (
             update(self.model)
-            .where(self.model.id == row_id, self.model.status == PendingConfirmationStatus.IN_PROGRESS)
+            .where(self.model.id == row_id,
+                        self.model.status == PendingConfirmationStatus.IN_PROGRESS,
+                        self.model.version == expected_version,)
             .values(status=status, not_found_attempts=not_found_attempts, unreachable_attempts=unreachable_attempts, next_check_at=next_check_at)
         )
         result = await self.session.execute(stmt)
         return result.rowcount > 0
 
-    async def delete_if_in_progress(self, row_id: UUID) -> bool:
+    async def delete_if_in_progress(self, row_id: UUID, expected_version: int) -> bool:
         stmt = (
             update(self.model)
-            .where(self.model.id == row_id, self.model.status == PendingConfirmationStatus.IN_PROGRESS)
+            .where(self.model.id == row_id,
+                   self.model.status == PendingConfirmationStatus.IN_PROGRESS,
+                   self.model.version == expected_version,)
             .values(is_deleted=True)
         )
         result = await self.session.execute(stmt)

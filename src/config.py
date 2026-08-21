@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     reconciliation_unreachable_alert_attempts: int = Field(default=10, env="RECONCILIATION_UNREACHABLE_ALERT_ATTEMPTS")
     reconciliation_concurrency: int = Field(default=5, env="RECONCILIATION_CONCURRENCY")
     reconciliation_unreachable_backoff_max_seconds: float = Field(default=3600.0,env="RECONCILIATION_UNREACHABLE_BACKOFF_MAX_SECONDS")
+    orders_path: str = Field(default="/v1/orders", env="ORDERS_PATH")
+    reconciliation_row_processing_timeout_seconds: float = Field(default=60.0,env="RECONCILIATION_ROW_PROCESSING_TIMEOUT_SECONDS")
 
     class Config:
         env_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')

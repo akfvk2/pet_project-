@@ -7,7 +7,6 @@ from src.repositories.pending_confirmation import PendingConfirmationRepository,
 from src.exceptions.external_service_exception import ExternalServiceException
 from enum import Enum
 from src.clients.order_client import get_order_client
-from src.exceptions.retryable import RetryableException
 from datetime import datetime, timedelta, timezone
 
 logger = logging.getLogger(__name__)
@@ -43,15 +42,18 @@ async def _process_row(row_id: UUID) -> None:
         if row is None:
             return
         reference_id = row.reference_id
-        not_found_attempts, unreachable_attempts, user_id = row.not_found_attempts, row.unreachable_attempts, row.user_id
+        not_found_attempts, unreachable_attempts, user_id, version = row.not_found_attempts, row.unreachable_attempts, row.user_id, row.version
     try:
-        existing_order = await _order_client.get_order_by_reference_id(reference_id)
+        existing_orders = await asyncio.wait_for(
+            _order_client.get_orders_by_user_id(user_id),
+            timeout=settings.reconciliation_row_processing_timeout_seconds,
+        )
+        existing_order = next((o for o in existing_orders if o.reference_id == reference_id), None)
         outcome = ReconciliationOutcome.FOUND if existing_order else ReconciliationOutcome.NOT_FOUND
-    except RetryableException:
+    except asyncio.TimeoutError:
         outcome = ReconciliationOutcome.UNREACHABLE
     except ExternalServiceException:
-        logger.exception(f"Reconciliation: unexpected service error checking user {user_id}")
-        raise
+        outcome = ReconciliationOutcome.UNREACHABLE
     except Exception:
         logger.exception(f"Reconciliation: unexpected error checking user {user_id}")
         raise
@@ -59,14 +61,14 @@ async def _process_row(row_id: UUID) -> None:
         repo = PendingConfirmationRepository(session)
         try:
             if outcome == ReconciliationOutcome.FOUND:
-                updated = await repo.delete_if_in_progress(row_id)
+                updated = await repo.delete_if_in_progress(row_id, version)
             else:
                 new_not_found, new_unreachable, new_status, next_check_at = _next_state(
                     not_found_attempts, unreachable_attempts, outcome, user_id
                 )
-                updated = await repo.save_if_in_progress(row_id, new_status, new_not_found, new_unreachable, next_check_at)
+                updated = await repo.save_if_in_progress(row_id, new_status, new_not_found, new_unreachable, next_check_at, version)
             if not updated:
-                logger.warning(f"Reconciliation: row {row_id} was no longer IN_PROGRESS, skipping save")
+                logger.warning(f"Reconciliation: row {row_id} was no longer at expected version, skipping save")
             await session.commit()
         except Exception:
             logger.exception(f"Reconciliation: failed to persist result for row {row_id}")
@@ -78,17 +80,17 @@ async def _reconcile_once() -> None:
         repo = PendingConfirmationRepository(session)
         claimed = await repo.claim_batch()
         await session.commit()
-    semaphore = asyncio.Semaphore(settings.reconciliation_concurrency)
+    chunk_size = settings.reconciliation_concurrency
+    for i in range(0, len(claimed), chunk_size):
+        chunk = claimed[i:i + chunk_size]
+        results = await asyncio.gather(
+            *(_process_row(row.id) for row in chunk),
+            return_exceptions=True,)
+        for row, result in zip(chunk, results):
+            if isinstance(result, Exception):
+                logger.exception(f"Reconciliation: failed to process row {row.id}", exc_info=result)
 
-    async def _process_with_limit(row_id: UUID) -> None:
-        async with semaphore:
-            await _process_row(row_id)
-    results = await asyncio.gather(
-        *(_process_with_limit(row.id) for row in claimed),
-        return_exceptions=True,)
-    for row, result in zip(claimed, results):
-        if isinstance(result, Exception):
-            logger.exception(f"Reconciliation: failed to process row {row.id}", exc_info=result)
+
 
 
 async def run_reconciliation_worker() -> None:
