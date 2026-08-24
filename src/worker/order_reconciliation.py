@@ -79,7 +79,6 @@ async def _reconcile_once() -> None:
     async with SessionFactory() as session:
         repo = PendingConfirmationRepository(session)
         claimed = await repo.claim_batch()
-        await session.commit()
     chunk_size = settings.reconciliation_concurrency
     for i in range(0, len(claimed), chunk_size):
         chunk = claimed[i:i + chunk_size]

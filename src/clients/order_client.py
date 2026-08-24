@@ -6,7 +6,7 @@ from src.config import settings
 from src.exceptions.external_service_exception import ExternalServiceException
 from src.exceptions.retryable import RetryableException
 from src.schemas.orders import OrderResponse, OrderCreate
-from http import HTTPStatus
+from http import HTTPStatus, HTTPMethod
 from src.mappers.order_mapper import OrderMapper
 
 
@@ -51,9 +51,9 @@ class OrderServiceClient:
     )
     async def get_orders_by_user_id(self, user_id: UUID) -> list[OrderResponse]:
         url = f"{self.base_url}{settings.orders_path}"
-        response = await self._request("GET", url, params={"user_id": str(user_id)})
+        response = await self._request(HTTPMethod.GET, url, params=OrderMapper.to_orders_by_user_params(user_id))
         if response.status_code == HTTPStatus.NOT_FOUND:
-            return []
+            raise ExternalServiceException(response.status_code, response.text)
         self._handle_response_errors(response)
         return OrderMapper.to_orders(response.json())
 
@@ -71,7 +71,7 @@ class OrderServiceClient:
     async def create_order(self, user_id: UUID, order_in: OrderCreate, reference_id: UUID) -> OrderResponse:
         payload = OrderMapper.to_create_request(order_in, user_id, reference_id)
         url = f"{self.base_url}{settings.orders_path}"
-        response = await self._request("POST", url, json=payload.model_dump())
+        response = await self._request(HTTPMethod.POST, url, json=payload.model_dump())
         self._handle_response_errors(response)
         return OrderMapper.to_order(response.json())
 

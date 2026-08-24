@@ -17,3 +17,7 @@ class OrderMapper:
             user_id=user_id,
             reference_id=reference_id,
         )
+
+    @staticmethod
+    def to_orders_by_user_params(user_id: UUID) -> dict:
+        return {"user_id": str(user_id)}
