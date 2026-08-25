@@ -18,9 +18,10 @@ def _should_retry(exc: BaseException) -> bool:
     return isinstance(exc, RetryableException)
 
 class OrderServiceClient:
-    def __init__(self):
+    def __init__(self, mapper: type[OrderMapper] = OrderMapper):
         self.base_url = settings.order_service_url
         self.client = httpx.AsyncClient()
+        self.mapper = mapper
 
 
     async def close(self) -> None:
@@ -51,11 +52,11 @@ class OrderServiceClient:
     )
     async def get_orders_by_user_id(self, user_id: UUID) -> list[OrderResponse]:
         url = f"{self.base_url}{settings.orders_path}"
-        response = await self._request(HTTPMethod.GET, url, params=OrderMapper.to_orders_by_user_params(user_id))
+        response = await self._request(HTTPMethod.GET, url, params=self.mapper.to_orders_by_user_params(user_id))
         if response.status_code == HTTPStatus.NOT_FOUND:
             raise ExternalServiceException(response.status_code, response.text)
         self._handle_response_errors(response)
-        return OrderMapper.to_orders(response.json())
+        return self.mapper.to_orders(response.json())
 
 
     @retry(
@@ -69,11 +70,11 @@ class OrderServiceClient:
         reraise=True,
     )
     async def create_order(self, user_id: UUID, order_in: OrderCreate, reference_id: UUID) -> OrderResponse:
-        payload = OrderMapper.to_create_request(order_in, user_id, reference_id)
+        payload = self.mapper.to_create_request(order_in, user_id, reference_id)
         url = f"{self.base_url}{settings.orders_path}"
         response = await self._request(HTTPMethod.POST, url, json=payload.model_dump())
         self._handle_response_errors(response)
-        return OrderMapper.to_order(response.json())
+        return self.mapper.to_order(response.json())
 
 _order_service_client: OrderServiceClient | None = None
 

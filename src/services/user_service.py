@@ -45,6 +45,7 @@ class UserService:
         user_data = UserRead.model_validate(db_user)
         reference_id = uuid4()
         self.pending_confirmation_repo.register_pending(db_user.id, reference_id)
+        await self.session.commit()
         try:
             order = await self.order_client.create_order(
                 user_id=db_user.id,
@@ -54,7 +55,6 @@ class UserService:
         except ExternalServiceException:
             return UserMapper.to_user_with_orders(user_data, [], OrderConfirmationStatus.PENDING)
         await self.pending_confirmation_repo.resolve_pending(reference_id)
-        await self.session.commit()
         return UserMapper.to_user_with_orders(user_data, [order], OrderConfirmationStatus.CONFIRMED)
 
     async def update_user(self, user_id: UUID, user_in: UserUpdate):
