@@ -13,6 +13,8 @@ from src.services.service_helpers import get_by_id_or_fail
 from src.mappers.user_mapper import UserMapper
 from src.schemas.users import OrderConfirmationStatus
 from src.repositories.pending_confirmation import PendingConfirmationRepository
+from src.unit_of_work import UnitOfWork
+
 
 
 logger = logging.getLogger(__name__)
@@ -45,7 +47,8 @@ class UserService:
         user_data = UserRead.model_validate(db_user)
         reference_id = uuid4()
         self.pending_confirmation_repo.register_pending(db_user.id, reference_id)
-        await self.session.commit()
+        async with UnitOfWork(self.session):
+            self.pending_confirmation_repo.register_pending(db_user.id, reference_id)
         try:
             order = await self.order_client.create_order(
                 user_id=db_user.id,
