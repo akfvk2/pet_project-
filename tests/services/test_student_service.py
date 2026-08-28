@@ -11,8 +11,8 @@ from src.models.course import Course
 
 
 @pytest.fixture
-def student_service(redis_client):
-    service = StudentService(session=AsyncMock())
+def student_service(db_session, redis_client):
+    service = StudentService(session=db_session)
     svc_module.redis_client = redis_client
     return service
 
@@ -41,12 +41,10 @@ def updated_student():
 
 
 
-class TestGetStudentById:
+class TestStudentService:
     async def test_cache_miss_fetches_from_db(self, student_service, redis_client, sample_student):
         student_service.students_repo.get_by_id = AsyncMock(return_value=sample_student)
-
         result = await student_service.get_student_by_id(sample_student.id)
-
         assert result.name == "test"
         cached = await redis_client.get(f"student:{sample_student.id}")
         assert cached is not None
@@ -55,19 +53,16 @@ class TestGetStudentById:
         student_read = StudentRead.model_validate(sample_student)
         await redis_client.setex(f"student:{sample_student.id}", 300, student_read.model_dump_json())
         student_service.students_repo.get_by_id = AsyncMock()
-
         await student_service.get_student_by_id(sample_student.id)
-
         student_service.students_repo.get_by_id.assert_not_called()
 
     async def test_not_found_raises_exception(self, student_service):
         student_service.students_repo.get_by_id = AsyncMock(return_value=None)
-
         with pytest.raises(NotFoundException):
             await student_service.get_student_by_id(uuid4())
 
 
-class TestCreateStudent:
+
     async def test_create_returns_student_read(self, student_service, sample_student):
         student_service.students_repo.create = AsyncMock(return_value=sample_student)
         student_in = StudentCreate(
@@ -78,7 +73,7 @@ class TestCreateStudent:
         assert result.name == "test"
 
 
-class TestDeleteStudent:
+
     async def test_delete_clears_cache(self, student_service, redis_client, sample_student):
         student_service.students_repo.get_by_id = AsyncMock(return_value=sample_student)
         student_service.students_repo.delete = AsyncMock()
@@ -86,14 +81,13 @@ class TestDeleteStudent:
         cached = await redis_client.get(f"student:{sample_student.id}")
         assert cached is None
 
-class TestUpdateStudent:
+
     async def test_update_success(self, student_service, sample_student, updated_student):
         student_service.students_repo.get_by_id = AsyncMock(return_value=sample_student)
         student_service.students_repo.update = AsyncMock(return_value=updated_student)
         student_in = StudentUpdate(
             name="Обновлённый",
-            course={"title": "Django"}
-        )
+            course={"title": "Django"})
         result = await student_service.update_student(sample_student.id, student_in)
         assert result.name == "Обновлённый"
         student_service.students_repo.update.assert_called_once()
@@ -103,8 +97,7 @@ class TestUpdateStudent:
         student_service.students_repo.update = AsyncMock(return_value=updated_student)
         await student_service.update_student(
             sample_student.id,
-            StudentUpdate(name="Обновлённый", course={"title": "Django"})
-        )
+            StudentUpdate(name="Обновлённый", course={"title": "Django"}))
         cached = await redis_client.get(f"student:{sample_student.id}")
         assert cached is not None
 

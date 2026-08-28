@@ -25,11 +25,12 @@ class UserLogExtra(TypedDict):
     user_id: UUID
 
 class UserService:
-    def __init__(self, session: AsyncSession, order_client: OrderServiceClient):
+    def __init__(self, session: AsyncSession, order_client: OrderServiceClient, unit_of_work_cls: type[UnitOfWork] = UnitOfWork):
         self.session = session
         self.users_repo = UserRepository(self.session)
         self.order_client = order_client
         self.pending_confirmation_repo = PendingConfirmationRepository(self.session)
+        self.unit_of_work_cls = unit_of_work_cls
 
 
     def _cache_key(self, user_id: UUID) -> str:
@@ -43,12 +44,11 @@ class UserService:
 
     async def create_user(self, user_in: UserCreateWithOrder) -> UserWithOrdersRead:
         user_entity = user_in.to_model()
-        db_user = await self.users_repo.create(user_entity)
-        user_data = UserRead.model_validate(db_user)
         reference_id = uuid4()
-        self.pending_confirmation_repo.register_pending(db_user.id, reference_id)
-        async with UnitOfWork(self.session):
+        async with self.unit_of_work_cls(self.session):
+            db_user = await self.users_repo.create(user_entity)
             self.pending_confirmation_repo.register_pending(db_user.id, reference_id)
+        user_data = UserRead.model_validate(db_user)
         try:
             order = await self.order_client.create_order(
                 user_id=db_user.id,

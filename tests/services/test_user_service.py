@@ -9,10 +9,9 @@ import src.services.user_service as svc_module
 
 
 @pytest.fixture
-def user_service(redis_client, mock_order_client):
-    service = UserService(session=AsyncMock())
+def user_service(db_session, redis_client, order_client):
+    service = UserService(session=db_session, order_client=order_client)
     svc_module.redis_client = redis_client
-    service.order_client = mock_order_client
     return service
 
 

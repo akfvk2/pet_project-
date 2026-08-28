@@ -24,6 +24,8 @@ import respx
 import httpx
 from uuid import uuid4 as _uuid4
 from src.cache import RedisClient
+from src.config import settings
+from src.clients.order_client import OrderServiceClient
 
 @pytest.fixture(scope="session")
 def postgres_container():
@@ -71,32 +73,36 @@ async def redis_client(redis_url):
 
 
 @pytest.fixture
-def mock_order_client():
-    client = AsyncMock()
-    client.get_orders_by_user_id = AsyncMock(return_value=[])
-    client.create_order = AsyncMock(return_value={"id": str(__import__('uuid').uuid4()), "title": "test order", "price": 0.0, "description": "", "status": "pending"})
-    return client
+def order_client():
+    client = OrderServiceClient()
+    with respx.mock(base_url=settings.order_service_url, assert_all_called=False) as mock:
+        mock.get(settings.orders_path).mock(return_value=httpx.Response(200, json=[]))
+        mock.post(settings.orders_path).mock(return_value=httpx.Response(201, json={
+            "id": str(_uuid4()),
+            "title": "test order",
+            "price": 0.0,
+            "description": "",
+            "status": "pending",
+        }))
+        yield client
 
 
 @pytest_asyncio.fixture
 async def client(db_session, redis_url):
     app = get_app()
-
     async def override_get_session():
         yield db_session
-
     app.dependency_overrides[get_session] = override_get_session
     cache_module.redis_client = RedisClient(redis_url)
-
-    with respx.mock(base_url="http://localhost:8001", assert_all_called=False) as mock:
-        mock.post("/v1/orders/").mock(return_value=httpx.Response(201, json={
+    with respx.mock(base_url=settings.order_service_url, assert_all_called=False) as mock:
+        mock.post(settings.orders_path).mock(return_value=httpx.Response(201, json={
             "id": str(_uuid4()),
             "title": "Test Order",
             "price": 10.0,
             "description": "",
             "status": "pending"
         }))
-        mock.get(url__regex=r"/v1/orders/by-user/.*").mock(
+        mock.get(settings.orders_path).mock(
             return_value=httpx.Response(200, json=[])
         )
 

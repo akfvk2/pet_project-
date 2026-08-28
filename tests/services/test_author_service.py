@@ -11,14 +11,13 @@ import src.services.author_service as svc_module
 
 
 @pytest.fixture
-def author_service(redis_client):
-    service = AuthorService(session=AsyncMock())
+def author_service(db_session, redis_client):
+    service = AuthorService(session=db_session)
     svc_module.redis_client = redis_client
     return service
 
 @pytest.fixture
 def sample_author():
-    from src.models.book import Book
     author = Author(
         name="Толстой",
         biography="Русский писатель",
@@ -45,7 +44,7 @@ def updated_author():
     author.books[0].author = None
     return author
 
-class TestGetUserById:
+class TestAuthorService:
     async def test_cache_miss_fetches_from_db(self, author_service, redis_client, sample_author):
         author_service.authors_repo.get_by_id = AsyncMock(return_value=sample_author)
         result = await author_service.get_author_by_id(sample_author.id)
@@ -57,9 +56,7 @@ class TestGetUserById:
         author_read = AuthorRead.model_validate(sample_author)
         await redis_client.setex(f"author:{sample_author.id}", 300, author_read.model_dump_json())
         author_service.authors_repo.get_by_id = AsyncMock()
-
         await author_service.get_author_by_id(sample_author.id)
-
         author_service.authors_repo.get_by_id.assert_not_called()
 
     async def test_not_found_raises_exception(self, author_service):
@@ -67,57 +64,44 @@ class TestGetUserById:
         with pytest.raises(NotFoundException):
             await author_service.get_author_by_id(uuid4())
 
-class TestCreateAuthor:
     async def test_create_returns_user_read(self, author_service, sample_author):
         author_service.authors_repo.create = AsyncMock(return_value=sample_author)
         author_in = AuthorCreate(
     name="Толстой",
-    books=[{"title": "Война и мир", "page_count": 100, "genre": "Роман"}]
-)
+    books=[{"title": "Война и мир", "page_count": 100, "genre": "Роман"}])
         result = await author_service.create_author(author_in)
         assert result.name == "Толстой"
 
-class TestUpdateAuthor:
     async def test_update_success(self, author_service, sample_author, updated_author):
         author_service.authors_repo.get_by_id = AsyncMock(return_value=sample_author)
         author_service.authors_repo.update = AsyncMock(return_value=updated_author)
-
         author_in = AuthorUpdate(
             name="Достоевский",
-            books=[{"title": "Преступление и наказание", "page_count": 600, "genre": "Роман"}]
-        )
+            books=[{"title": "Преступление и наказание", "page_count": 600, "genre": "Роман"}])
         result = await author_service.update_author(sample_author.id, author_in)
-
         assert result.name == "Достоевский"
         author_service.authors_repo.update.assert_called_once()
 
     async def test_update_clears_cache(self, author_service, redis_client, sample_author, updated_author):
         author_service.authors_repo.get_by_id = AsyncMock(return_value=sample_author)
         author_service.authors_repo.update = AsyncMock(return_value=updated_author)
-
         await author_service.update_author(
             sample_author.id,
             AuthorUpdate(
                 name="Достоевский",
-                books=[{"title": "Преступление и наказание", "page_count": 600, "genre": "Роман"}]
-            )
-        )
+                books=[{"title": "Преступление и наказание", "page_count": 600, "genre": "Роман"}]))
         cached = await redis_client.get(f"author:{sample_author.id}")
         assert cached is not None
 
     async def test_update_not_found(self, author_service):
         author_service.authors_repo.get_by_id = AsyncMock(return_value=None)
-
         with pytest.raises(NotFoundException):
             await author_service.update_author(
                 uuid4(),
                 AuthorUpdate(
                     name="Достоевский",
-                    books=[{"title": "Преступление и наказание", "page_count": 600, "genre": "Роман"}]
-                )
-            )
+                    books=[{"title": "Преступление и наказание", "page_count": 600, "genre": "Роман"}]))
 
-class TestDeleteUser:
     async def test_delete_clears_cache(self, author_service, redis_client, sample_author):
         author_service.authors_repo.get_by_id = AsyncMock(return_value=sample_author)
         author_service.authors_repo.delete = AsyncMock()
