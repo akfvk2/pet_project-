@@ -1,10 +1,13 @@
 import re
 from typing import Optional
 from pydantic import BaseModel, ConfigDict, field_validator, EmailStr
-from schemas.profiles import ProfileBase, ProfileRead
+from src.schemas.profiles import ProfileBase, ProfileRead
 from uuid import UUID
 from src.exceptions.validation_error import ValidationException
-
+from src.schemas.orders import OrderResponse
+from src.schemas.orders import OrderCreate
+from typing import Literal
+from enum import Enum
 
 
 class UserBase(BaseModel):
@@ -115,3 +118,37 @@ class UserRead(UserBase):
         return value
 
     model_config = ConfigDict(from_attributes=True)
+
+class OrderConfirmationStatus(str, Enum):
+    CONFIRMED = "confirmed"
+    PENDING = "pending"
+
+class UserWithOrdersRead(UserBase):
+    id: UUID
+    profile: Optional[ProfileRead] = None
+    orders: list[OrderResponse] = []
+    order_status: OrderConfirmationStatus = OrderConfirmationStatus.CONFIRMED
+    model_config = ConfigDict(from_attributes=True)
+
+class UserCreateWithOrder(UserCreate):
+    order_title: str
+    order_price: float
+    order_description: str = ""
+
+    def to_model(self):
+        from src.models.user import UserModel
+        from src.models.profile import ProfileModel
+        user_data = self.model_dump(exclude={"profile", "order_title", "order_price", "order_description"})
+        user_entity = UserModel(**user_data)
+        if self.profile is not None:
+            profile_entity = ProfileModel(**self.profile.model_dump())
+            user_entity.profile = profile_entity
+        return user_entity
+
+    def to_order_create(self) -> "OrderCreate":
+        return OrderCreate(
+            title=self.order_title,
+            price=self.order_price,
+            description=self.order_description,
+        )
+

@@ -15,4 +15,4 @@ class Book(Base):
     page_count: Mapped[int] = mapped_column(sa.Integer())
     genre: Mapped[str] = mapped_column(sa.String())
     author_id: Mapped[UUID] = mapped_column(ForeignKey("authors.id", ondelete="CASCADE"))
-    author: Mapped["Author"] = relationship("Author", back_populates="books")
+    author: Mapped["Author"] = relationship("Author", back_populates="books", lazy="noload")

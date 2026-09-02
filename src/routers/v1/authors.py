@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from schemas import authors
+from src.schemas import authors
 from src.db import get_session
 from src.services import AuthorService
 from uuid import UUID

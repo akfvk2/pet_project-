@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 
+
 class StudentRepository(BaseRepository[Students]):
     def __init__(self, session: AsyncSession):
         super().__init__(Students, session)

@@ -1,10 +1,12 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from  typing import TypeVar, Generic, Type
 from src.models.base_model import Base
 from uuid import UUID
+import logging
 
 ModelType = TypeVar("ModelType", bound=Base)
+logger = logging.getLogger(__name__)
+
 
 class BaseRepository(Generic[ModelType]):
     def __init__(self, model:Type[ModelType], session: AsyncSession):
@@ -29,3 +31,4 @@ class BaseRepository(Generic[ModelType]):
     async def delete(self, obj: ModelType) -> bool:
         obj.is_deleted = True
         return True
+

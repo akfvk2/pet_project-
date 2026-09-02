@@ -13,4 +13,4 @@ class ProfileModel(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     bio: Mapped[str] = mapped_column(sa.String())
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
-    user: Mapped["UserModel"] = relationship("UserModel", back_populates="profile")
+    user: Mapped["UserModel"] = relationship("UserModel", back_populates="profile", lazy="noload")

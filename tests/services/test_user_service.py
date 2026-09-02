@@ -1,0 +1,80 @@
+import pytest
+from unittest.mock import AsyncMock
+from uuid import uuid4
+from src.services.user_service import UserService
+from src.schemas.users import UserRead, UserUpdate, UserCreateWithOrder
+from src.exceptions.not_found import NotFoundException
+from src.models.user import UserModel
+import src.services.user_service as svc_module
+
+
+@pytest.fixture
+def user_service(db_session, redis_client, order_client):
+    service = UserService(session=db_session, order_client=order_client)
+    svc_module.redis_client = redis_client
+    return service
+
+
+@pytest.fixture
+def sample_user():
+    user = UserModel(username="testuser", email="test@gmail.com", age=25)
+    user.id = uuid4()
+    user.profile = None
+    return user
+
+
+class TestUserService:
+    async def test_get_user_with_orders(self, user_service, sample_user):
+        user_service.users_repo.get_by_id = AsyncMock(return_value=sample_user)
+        result = await user_service.get_user_with_orders(sample_user.id)
+        assert result.username == "testuser"
+        user_service.users_repo.get_by_id.assert_called_once()
+
+    async def test_get_user_not_found_raises(self, user_service):
+        user_service.users_repo.get_by_id = AsyncMock(return_value=None)
+        with pytest.raises(NotFoundException):
+            await user_service.get_user_with_orders(uuid4())
+
+    async def test_create_user(self, user_service, sample_user):
+        user_service.users_repo.create = AsyncMock(return_value=sample_user)
+        user_in = UserCreateWithOrder(
+            username="testuser",
+            email="test@gmail.com",
+            age=25,
+            order_title="Test Order",
+            order_price=10.0
+        )
+        result = await user_service.create_user(user_in)
+        assert result.username == "testuser"
+
+    async def test_update_success(self, user_service, sample_user):
+        user_service.users_repo.get_by_id = AsyncMock(return_value=sample_user)
+        user_service.users_repo.update = AsyncMock(return_value=sample_user)
+        user_in = UserUpdate(username="updated", email="updated@gmail.com", age=30)
+        result = await user_service.update_user(sample_user.id, user_in)
+        assert result.username == "updated"
+
+    async def test_update_clears_cache(self, user_service, redis_client, sample_user):
+        user_service.users_repo.get_by_id = AsyncMock(return_value=sample_user)
+        user_service.users_repo.update = AsyncMock(return_value=sample_user)
+        await user_service.update_user(
+            sample_user.id,
+            UserUpdate(username="updated", email="updated@gmail.com", age=30)
+        )
+        cached = await redis_client.get(f"user:{sample_user.id}")
+        assert cached is not None
+
+    async def test_update_not_found(self, user_service):
+        user_service.users_repo.get_by_id = AsyncMock(return_value=None)
+        with pytest.raises(NotFoundException):
+            await user_service.update_user(
+                uuid4(),
+                UserUpdate(username="updated", email="updated@gmail.com", age=30)
+            )
+
+    async def test_delete_clears_cache(self, user_service, redis_client, sample_user):
+        user_service.users_repo.get_by_id = AsyncMock(return_value=sample_user)
+        user_service.users_repo.delete = AsyncMock()
+        await user_service.delete_user(sample_user.id)
+        cached = await redis_client.get(f"user:{sample_user.id}")
+        assert cached is None
