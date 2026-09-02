@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     reconciliation_unreachable_backoff_max_seconds: float = Field(default=3600.0,env="RECONCILIATION_UNREACHABLE_BACKOFF_MAX_SECONDS")
     orders_path: str = Field(default="/v1/orders", env="ORDERS_PATH")
     reconciliation_row_processing_timeout_seconds: float = Field(default=60.0,env="RECONCILIATION_ROW_PROCESSING_TIMEOUT_SECONDS")
+    kafka_bootstrap_servers: str = Field(default="localhost:9092", env="KAFKA_BOOTSTRAP_SERVERS")
+    outbox_stale_in_progress_seconds: int = Field(default=300, env="OUTBOX_STALE_IN_PROGRESS_SECONDS")
+    outbox_publish_interval_seconds: float = Field(default=5.0, env="OUTBOX_PUBLISH_INTERVAL_SECONDS")
+    student_events_topic: str = Field(default="student-events", env="STUDENT_EVENTS_TOPIC")
 
     class Config:
         env_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')

@@ -9,18 +9,25 @@ import asyncio
 import contextlib
 from src.worker.order_reconciliation import run_reconciliation_worker
 from src.clients.order_client import get_order_client
+from src.worker.outbox_publisher import run_outbox_publisher, close_producer
+import logging
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     task = asyncio.create_task(run_reconciliation_worker())
+    outbox_task = asyncio.create_task(run_outbox_publisher())
     yield
     task.cancel()
+    outbox_task.cancel()
     with contextlib.suppress(asyncio.CancelledError):
         await task
+        await outbox_task
     await get_order_client().close()
+    await close_producer()
 
 
 def get_app() -> FastAPI:
+    logging.basicConfig(level=logging.INFO)
     app = FastAPI(
         docs_url='/docs',
         openapi_url='/openapi.json',
