@@ -8,6 +8,7 @@ import json
 from src.config import settings
 from typing import TypedDict
 from src.services.service_helpers import get_by_id_or_fail
+from src.services.student_events import StudentEventPublisher
 
 
 logger = logging.getLogger(__name__)
@@ -20,6 +21,7 @@ class StudentService:
     def __init__(self, session: AsyncSession):
         self.session = session
         self.students_repo = StudentRepository(self.session)
+        self.event_publisher = StudentEventPublisher(self.session)
 
     def _cache_key(self, student_id: UUID) -> str:
         return f"student:{student_id}"
@@ -32,6 +34,7 @@ class StudentService:
     async def create_student(self, student_in: students.StudentCreate):
         students_entity = student_in.to_model()
         db_student = await self.students_repo.create(students_entity)
+        self.event_publisher.register_student_created(db_student)
         return db_student
 
     async def get_student_by_id(self, student_id: UUID):
