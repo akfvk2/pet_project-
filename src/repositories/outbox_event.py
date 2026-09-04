@@ -37,15 +37,15 @@ class OutboxEventRepository(BaseRepository[OutboxEventModel]):
                 self.model.status == OutboxEventStatus.IN_PROGRESS,
                 self.model.version == expected_version,
             )
-            .values(is_deleted=True, status=OutboxEventStatus.PUBLISHED))
+            .values(status=OutboxEventStatus.PUBLISHED))
         result = await self.session.execute(stmt)
         return result.rowcount > 0
 
-    async def mark_failed(self, event_id: UUID, expected_version: int, attempts: int) -> bool:
+    async def mark_failed(self, event_id: UUID, expected_version: int, attempts: int, status: str) -> bool:
         stmt = (update(self.model).where(
                 self.model.id == event_id,
                 self.model.status == OutboxEventStatus.IN_PROGRESS,
-                self.model.version == expected_version,).values(status=OutboxEventStatus.PENDING, attempts=attempts))
+                self.model.version == expected_version,).values(status=status, attempts=attempts))
         result = await self.session.execute(stmt)
         return result.rowcount > 0
 

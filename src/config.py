@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     outbox_stale_in_progress_seconds: int = Field(default=300, env="OUTBOX_STALE_IN_PROGRESS_SECONDS")
     outbox_publish_interval_seconds: float = Field(default=5.0, env="OUTBOX_PUBLISH_INTERVAL_SECONDS")
     student_events_topic: str = Field(default="student-events", env="STUDENT_EVENTS_TOPIC")
+    outbox_failed_max_attempts: int = Field(default=5, env="OUTBOX_FAILED_MAX_ATTEMPTS")
 
     class Config:
         env_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')

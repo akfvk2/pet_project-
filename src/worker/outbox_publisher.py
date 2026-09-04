@@ -4,6 +4,7 @@ from aiokafka import AIOKafkaProducer
 from src.db import SessionFactory
 from src.config import settings
 from src.repositories.outbox_event import OutboxEventRepository
+from src.models.outbox_event import OutboxEventStatus
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,12 @@ async def _get_producer() -> AIOKafkaProducer:
         )
         await _producer.start()
     return _producer
+
+def _next_status(attempts: int, event_id) -> str:
+    if attempts >= settings.outbox_failed_max_attempts:
+        logger.error(f"Outbox: event {event_id} failed permanently after {attempts} attempts")
+        return OutboxEventStatus.FAILED
+    return OutboxEventStatus.PENDING
 
 
 async def close_producer() -> None:
@@ -45,9 +52,11 @@ async def _publish_once() -> None:
             )
         except Exception:
             logger.exception(f"Outbox: failed to publish event {event.id}")
+            new_attempts = event.attempts + 1
+            new_status = _next_status(new_attempts, event.id)
             async with SessionFactory() as session:
                 repo = OutboxEventRepository(session)
-                updated = await repo.mark_failed(event.id, event.version, event.attempts + 1)
+                updated = await repo.mark_failed(event.id, event.version, new_attempts, new_status)
                 if not updated:
                     logger.warning(f"Outbox: event {event.id} was no longer at expected version, skipping")
                 await session.commit()

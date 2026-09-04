@@ -2,8 +2,9 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column
 from uuid import UUID, uuid4
 from src.models.base_model import Base
+from enum import Enum
 
-class OutboxEventStatus:
+class OutboxEventStatus(str, Enum):
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     PUBLISHED = "published"
