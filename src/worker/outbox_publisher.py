@@ -22,7 +22,7 @@ async def _get_producer() -> AIOKafkaProducer:
         await _producer.start()
     return _producer
 
-def _next_status(attempts: int, event_id) -> str:
+def _next_status(attempts: int, event_id) -> OutboxEventStatus:
     if attempts >= settings.outbox_failed_max_attempts:
         logger.error(f"Outbox: event {event_id} failed permanently after {attempts} attempts")
         return OutboxEventStatus.FAILED
@@ -53,10 +53,10 @@ async def _publish_once() -> None:
         except Exception:
             logger.exception(f"Outbox: failed to publish event {event.id}")
             new_attempts = event.attempts + 1
-            new_status = _next_status(new_attempts, event.id)
+            should_retry = _next_status(new_attempts, event.id)
             async with SessionFactory() as session:
                 repo = OutboxEventRepository(session)
-                updated = await repo.mark_failed(event.id, event.version, new_attempts, new_status)
+                updated = await repo.mark_failed(event.id, event.version, new_attempts, should_retry)
                 if not updated:
                     logger.warning(f"Outbox: event {event.id} was no longer at expected version, skipping")
                 await session.commit()

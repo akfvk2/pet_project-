@@ -3,9 +3,10 @@ from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.config import settings
 from src.schemas.student_events import StudentCreatedEvent
+from src.models.outbox_event import OutboxEventModel
 
 
-class StudentEventPublisher:
+class StudentEventService:
     def __init__(self, session: AsyncSession):
         self.outbox_repo = OutboxEventRepository(session)
 
@@ -18,4 +19,10 @@ class StudentEventPublisher:
             name=student.name,
         )
         payload = event.model_dump_json()
-        self.outbox_repo.register_event(event_id, settings.student_events_topic, str(student.id), payload)
+        outbox_event = OutboxEventModel(
+            id=event_id,
+            topic=settings.student_events_topic,
+            key=str(student.id),
+            payload=payload,
+        )
+        self.outbox_repo.register_event(outbox_event)

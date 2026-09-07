@@ -26,7 +26,7 @@ class OutboxEventRepository(BaseRepository[OutboxEventModel]):
         stmt = (
             update(self.model)
             .where(self.model.id.in_(subquery))
-            .values(status=OutboxEventStatus.IN_PROGRESS, version=self.model.version + 1)
+            .values(status=OutboxEventStatus.IN_PROGRESS, version=self.model.version + 1, updated_at=now)
             .returning(self.model))
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
@@ -37,17 +37,17 @@ class OutboxEventRepository(BaseRepository[OutboxEventModel]):
                 self.model.status == OutboxEventStatus.IN_PROGRESS,
                 self.model.version == expected_version,
             )
-            .values(status=OutboxEventStatus.PUBLISHED))
+            .values(status=OutboxEventStatus.PUBLISHED, version=self.model.version + 1))
         result = await self.session.execute(stmt)
         return result.rowcount > 0
 
-    async def mark_failed(self, event_id: UUID, expected_version: int, attempts: int, status: str) -> bool:
+    async def mark_failed(self, event_id: UUID, expected_version: int, attempts: int, status:OutboxEventStatus ) -> bool:
         stmt = (update(self.model).where(
                 self.model.id == event_id,
                 self.model.status == OutboxEventStatus.IN_PROGRESS,
-                self.model.version == expected_version,).values(status=status, attempts=attempts))
+                self.model.version == expected_version,).values(status=status, attempts=attempts, version=self.model.version + 1))
         result = await self.session.execute(stmt)
         return result.rowcount > 0
 
-    def register_event(self, event_id: UUID, topic: str, key: str, payload: str) -> None:
-        self.session.add(OutboxEventModel(id=event_id, topic=topic, key=key, payload=payload))
+    def register_event(self, event: OutboxEventModel) -> None:
+        self.session.add(event)

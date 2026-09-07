@@ -16,6 +16,6 @@ class OutboxEventModel(Base):
     topic: Mapped[str] = mapped_column(sa.String(), nullable=False)
     key: Mapped[str] = mapped_column(sa.String(), nullable=False)
     payload: Mapped[str] = mapped_column(sa.Text(), nullable=False)
-    status: Mapped[str] = mapped_column(sa.String(), nullable=False, server_default="pending", default="pending")
+    status: Mapped[str] = mapped_column(sa.String(), nullable=False, server_default=OutboxEventStatus.PENDING.value, default=OutboxEventStatus.PENDING)
     attempts: Mapped[int] = mapped_column(sa.Integer(), nullable=False, server_default="0", default=0)
     version: Mapped[int] = mapped_column(sa.Integer(), nullable=False, server_default="0", default=0)
