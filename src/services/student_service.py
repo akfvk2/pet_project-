@@ -9,7 +9,8 @@ from src.config import settings
 from typing import TypedDict
 from src.services.service_helpers import get_by_id_or_fail
 from src.services.student_events import StudentEventService
-
+from src.repositories.outbox_event import OutboxEventRepository
+from src.services.outbox_service import OutboxService
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ class StudentService:
     def __init__(self, session: AsyncSession):
         self.session = session
         self.students_repo = StudentRepository(self.session)
-        self.event_publisher = StudentEventService(self.session)
+        self.event_publisher = StudentEventService(OutboxService(OutboxEventRepository(self.session)))
 
     def _cache_key(self, student_id: UUID) -> str:
         return f"student:{student_id}"

@@ -14,9 +14,11 @@ import logging
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    outbox_stop_event = asyncio.Event()
     task = asyncio.create_task(run_reconciliation_worker())
-    outbox_task = asyncio.create_task(run_outbox_publisher())
+    outbox_task = asyncio.create_task(run_outbox_publisher(outbox_stop_event))
     yield
+    outbox_stop_event.set()
     task.cancel()
     outbox_task.cancel()
     with contextlib.suppress(asyncio.CancelledError):

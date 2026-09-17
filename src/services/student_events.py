@@ -1,28 +1,24 @@
-from src.repositories.outbox_event import OutboxEventRepository
+from src.services.outbox_service import OutboxService
 from uuid import uuid4
-from sqlalchemy.ext.asyncio import AsyncSession
 from src.config import settings
 from src.schemas.student_events import StudentCreatedEvent
-from src.models.outbox_event import OutboxEventModel
+from src.models.outbox_event import StudentEventType
+from src.models.student import Students
 
 
 class StudentEventService:
-    def __init__(self, session: AsyncSession):
-        self.outbox_repo = OutboxEventRepository(session)
+    def __init__(self, outbox_service: OutboxService):
+        self.outbox_service = outbox_service
 
-    def register_student_created(self, student) -> None:
-        event_id = uuid4()
+    def register_student_created(self, student: Students) -> None:
         event = StudentCreatedEvent(
-            event_id=event_id,
-            event="student_created",
+            event_id=uuid4(),
+            event=StudentEventType.STUDENT_CREATED.value,
             student_id=student.id,
             name=student.name,
         )
-        payload = event.model_dump_json()
-        outbox_event = OutboxEventModel(
-            id=event_id,
+        self.outbox_service.publish(
             topic=settings.student_events_topic,
             key=str(student.id),
-            payload=payload,
+            payload=event.model_dump_json(),
         )
-        self.outbox_repo.register_event(outbox_event)

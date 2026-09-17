@@ -1,10 +1,13 @@
 import asyncio
 import logging
+from datetime import datetime, timezone, timedelta
 from aiokafka import AIOKafkaProducer
 from src.db import SessionFactory
 from src.config import settings
 from src.repositories.outbox_event import OutboxEventRepository
-from src.models.outbox_event import OutboxEventStatus
+from src.models.outbox_event import OutboxEventStatus, RetryOutcome
+from aiokafka.errors import KafkaError
+
 
 logger = logging.getLogger(__name__)
 
@@ -22,11 +25,20 @@ async def _get_producer() -> AIOKafkaProducer:
         await _producer.start()
     return _producer
 
-def _next_status(attempts: int, event_id) -> OutboxEventStatus:
+def _next_status(attempts: int, event_id) -> RetryOutcome:
     if attempts >= settings.outbox_failed_max_attempts:
         logger.error(f"Outbox: event {event_id} failed permanently after {attempts} attempts")
-        return OutboxEventStatus.FAILED
-    return OutboxEventStatus.PENDING
+        return RetryOutcome.GIVE_UP
+    return RetryOutcome.RETRY
+
+def _next_retry_at(attempts: int) -> datetime | None:
+    if attempts >= settings.outbox_failed_max_attempts:
+        return None
+    delay_seconds = min(
+        settings.outbox_retry_base_seconds * (2 ** attempts),
+        settings.outbox_retry_max_seconds,
+    )
+    return datetime.now(timezone.utc) + timedelta(seconds=delay_seconds)
 
 
 async def close_producer() -> None:
@@ -39,9 +51,9 @@ async def close_producer() -> None:
 async def _publish_once() -> None:
     async with SessionFactory() as session:
         repo = OutboxEventRepository(session)
+        await repo.fail_permanently_stuck()
         claimed = await repo.claim_batch()
         await session.commit()
-
     producer = await _get_producer()
     for event in claimed:
         try:
@@ -50,15 +62,19 @@ async def _publish_once() -> None:
                 key=event.key.encode("utf-8"),
                 value=event.payload.encode("utf-8"),
             )
-        except Exception:
+        except KafkaError as exc:
             logger.exception(f"Outbox: failed to publish event {event.id}")
             new_attempts = event.attempts + 1
-            should_retry = _next_status(new_attempts, event.id)
+            new_status = _next_status(new_attempts, event.id)
+            next_retry_at = _next_retry_at(new_attempts)
             async with SessionFactory() as session:
                 repo = OutboxEventRepository(session)
-                updated = await repo.mark_failed(event.id, event.version, new_attempts, should_retry)
+                updated = await repo.mark_failed(event.id, event.version, new_attempts, new_status, next_retry_at, str(exc))
                 if not updated:
-                    logger.warning(f"Outbox: event {event.id} was no longer at expected version, skipping")
+                    logger.error(
+                        f"Outbox: event {event.id} version mismatch on mark_failed — "
+                        f"possible concurrent processing by another worker"
+                    )
                 await session.commit()
             continue
 
@@ -66,12 +82,15 @@ async def _publish_once() -> None:
             repo = OutboxEventRepository(session)
             updated = await repo.mark_published(event.id, event.version)
             if not updated:
-                logger.warning(f"Outbox: event {event.id} was no longer at expected version, skipping")
+                logger.error(                                        # R61: warning -> error
+                    f"Outbox: event {event.id} version mismatch on mark_published — "
+                    f"possible concurrent processing by another worker"
+                )
             await session.commit()
 
 
-async def run_outbox_publisher() -> None:
-    while True:
+async def run_outbox_publisher(stop_event: asyncio.Event) -> None:
+    while not stop_event.is_set():
         try:
             await _publish_once()
         except Exception:
