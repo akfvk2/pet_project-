@@ -1,8 +1,7 @@
 from src.services.outbox_service import OutboxService
 from uuid import uuid4
 from src.config import settings
-from src.schemas.student_events import StudentCreatedEvent
-from src.models.outbox_event import StudentEventType
+from src.schemas.student_events import StudentCreatedEvent, StudentEventType
 from src.models.student import Students
 
 
@@ -17,7 +16,7 @@ class StudentEventService:
             student_id=student.id,
             name=student.name,
         )
-        self.outbox_service.publish(
+        self.outbox_service.register(
             topic=settings.student_events_topic,
             key=str(student.id),
             payload=event.model_dump_json(),

@@ -1,10 +1,11 @@
 from src.repositories.base_repository import BaseRepository
-from src.models.outbox_event import OutboxEventModel, OutboxEventStatus, RetryOutcome
+from src.models.outbox_event import OutboxEventModel, OutboxEventStatus
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import update, select, or_, and_, case
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 from src.config import settings
+
 
 
 class OutboxEventRepository(BaseRepository[OutboxEventModel]):
@@ -48,7 +49,7 @@ class OutboxEventRepository(BaseRepository[OutboxEventModel]):
         result = await self.session.execute(stmt)
         return result.rowcount > 0
 
-    async def mark_failed(self, event_id: UUID, expected_version: int, attempts: int, status:RetryOutcome, next_retry_at: datetime | None,
+    async def mark_failed(self, event_id: UUID, expected_version: int, attempts: int, status:OutboxEventStatus, next_retry_at: datetime | None,
                           last_error: str | None ) -> bool:
         stmt = (update(self.model).where(
                 self.model.id == event_id,

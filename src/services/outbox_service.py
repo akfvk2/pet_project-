@@ -6,6 +6,6 @@ class OutboxService:
     def __init__(self, outbox_repo: OutboxEventRepository):
         self.outbox_repo = outbox_repo
 
-    def publish(self, topic: str, key: str, payload: str) -> None:
+    def register(self, topic: str, key: str, payload: str) -> None:
         outbox_event = OutboxEventModel(id=uuid4(), topic=topic, key=key, payload=payload)
         self.outbox_repo.register_event(outbox_event)

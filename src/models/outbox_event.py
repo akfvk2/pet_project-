@@ -11,12 +11,7 @@ class OutboxEventStatus(str, Enum):
     PUBLISHED = "published"
     FAILED = "failed"
 
-class RetryOutcome(str, Enum):
-    RETRY = "pending"
-    GIVE_UP = "failed"
 
-class StudentEventType(str, Enum):
-    STUDENT_CREATED = "student_created"
 
 class OutboxEventModel(Base):
     __tablename__ = 'outbox_events'
