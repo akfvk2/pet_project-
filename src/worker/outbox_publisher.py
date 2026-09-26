@@ -4,7 +4,7 @@ from datetime import datetime, timezone, timedelta
 from aiokafka import AIOKafkaProducer
 from src.db import SessionFactory
 from src.config import settings
-from src.repositories.outbox_event import OutboxEventRepository, RetryOutcome
+from src.repositories.outbox_event import OutboxEventRepository
 from src.models.outbox_event import OutboxEventStatus
 from aiokafka.errors import KafkaError
 
