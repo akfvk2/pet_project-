@@ -17,12 +17,13 @@ _producer: AIOKafkaProducer | None = None
 async def _get_producer() -> AIOKafkaProducer:
     global _producer
     if _producer is None:
-        _producer = AIOKafkaProducer(
+        producer = AIOKafkaProducer(
             bootstrap_servers=settings.kafka_bootstrap_servers,
             acks="all",
             enable_idempotence=True,
         )
-        await _producer.start()
+        await producer.start()
+        _producer = producer
     return _producer
 
 def _next_status(attempts: int, event_id) -> OutboxEventStatus:
@@ -48,15 +49,17 @@ async def close_producer() -> None:
         _producer = None
 
 
-async def _publish_once() -> None:
+async def _publish_once() -> bool:
     async with SessionFactory() as session:
         repo = OutboxEventRepository(session)
         await repo.fail_permanently_stuck()
         claimed = await repo.claim_batch()
         await session.commit()
-    producer = await _get_producer()
+    if not claimed:
+        return False
     for event in claimed:
         try:
+            producer = await _get_producer()
             await producer.send_and_wait(
                 event.topic,
                 key=event.key.encode("utf-8"),
@@ -80,7 +83,6 @@ async def _publish_once() -> None:
                     )
                 await session.commit()
             continue
-
         async with SessionFactory() as session:
             repo = OutboxEventRepository(session)
             updated = await repo.mark_published(event.id, event.version)
@@ -93,12 +95,15 @@ async def _publish_once() -> None:
                     f"possible concurrent processing by another worker"
                 )
             await session.commit()
+    return True
 
 
 async def run_outbox_publisher(stop_event: asyncio.Event) -> None:
     while not stop_event.is_set():
         try:
-            await _publish_once()
+            had_work = await _publish_once()
         except Exception:
             logger.exception("Outbox publisher iteration failed")
-        await asyncio.sleep(settings.outbox_publish_interval_seconds)
+            had_work = False
+        if not had_work:
+            await asyncio.sleep(settings.outbox_publish_interval_seconds)
