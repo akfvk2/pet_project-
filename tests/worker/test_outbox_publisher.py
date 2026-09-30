@@ -1,4 +1,4 @@
-from src.worker.outbox_publisher import _next_status, _next_retry_at
+from src.worker.outbox_publisher import _next_status, _next_retry_at, _publish_once
 from src.models.outbox_event import OutboxEventStatus, OutboxEventModel
 from src.config import settings
 from datetime import datetime, timezone, timedelta
@@ -8,7 +8,11 @@ from uuid import uuid4
 from sqlalchemy import update, delete
 from testcontainers.kafka import KafkaContainer
 from src.repositories.outbox_event import OutboxEventRepository
-import src.worker.outbox_publisher as outbox_publisher
+from src.db import SessionFactory
+from aiokafka import AIOKafkaProducer
+from sqlalchemy.pool import NullPool
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+
 
 class TestNextStatus:
     def test_returns_pending_below_limit(self):
@@ -64,66 +68,87 @@ async def _clean_outbox_events(db_session):
     await db_session.commit()
     yield
 
+@pytest.fixture
+def repo(db_session):
+    return OutboxEventRepository(db_session)
 
-@pytest.fixture(autouse=True)
-def _patch_session_factory(monkeypatch, db_session):
-    monkeypatch.setattr(outbox_publisher, "SessionFactory", lambda: _ReusableSession(db_session))
+@pytest.fixture
+def session_factory(db_session):
+    return lambda: _ReusableSession(db_session)
+
+@pytest_asyncio.fixture
+async def real_producer_factory(kafka_bootstrap_servers):
+    producer = AIOKafkaProducer(
+        bootstrap_servers=kafka_bootstrap_servers, acks="all", enable_idempotence=True)
+    await producer.start()
+    async def _get():
+        return producer
+    yield _get
+    await producer.stop()
 
 
-@pytest_asyncio.fixture(autouse=True)
-async def _reset_producer():
-    await outbox_publisher.close_producer()
-    yield
-    await outbox_publisher.close_producer()
+@pytest.fixture
+def broken_producer_factory():
+    async def _get():
+        producer = AIOKafkaProducer(
+            bootstrap_servers="127.0.0.1:1", acks="all", enable_idempotence=True)
+        await producer.start()
+        return producer
+    return _get
 
+
+@pytest.fixture
+def fetch_persisted_event(db_url):
+    async def _fetch(event_id):
+        engine = create_async_engine(db_url, poolclass=NullPool)
+        session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        async with session_factory() as verify_session:
+            verify_repo = OutboxEventRepository(verify_session)
+            return await verify_repo.get_by_id(event_id)
+        await engine.dispose()
+        return result
+    return _fetch
 
 class TestPublishOnce:
-    async def test_marks_event_published_on_real_kafka_send(self, db_session, kafka_bootstrap_servers, monkeypatch):
-        monkeypatch.setattr(settings, "kafka_bootstrap_servers", kafka_bootstrap_servers)
-        repo = OutboxEventRepository(db_session)
+    async def test_marks_event_published_on_real_kafka_send(self, db_session, repo, session_factory, real_producer_factory, fetch_persisted_event):
         event = OutboxEventModel(id=uuid4(), topic="outbox-test-topic", key="k", payload="p")
         repo.register_event(event)
         await db_session.commit()
-        had_work = await outbox_publisher._publish_once()
+        had_work = await _publish_once(session_factory, real_producer_factory)
         assert had_work is True
-        row = await repo.get_by_id(event.id)
+        row = await fetch_persisted_event(event.id)
         assert row.status == OutboxEventStatus.PUBLISHED
 
-    async def test_marks_event_failed_when_attempts_exhausted_on_unreachable_kafka(self, db_session, monkeypatch):
-        monkeypatch.setattr(settings, "kafka_bootstrap_servers", "127.0.0.1:1")
-        repo = OutboxEventRepository(db_session)
+    async def test_marks_event_failed_when_attempts_exhausted_on_unreachable_kafka(self, db_session, repo, session_factory,
+                                                                                   broken_producer_factory, fetch_persisted_event):
         event = OutboxEventModel(id=uuid4(), topic="outbox-test-topic", key="k", payload="p")
         repo.register_event(event)
         await db_session.commit()
         await db_session.execute(
             update(OutboxEventModel).where(OutboxEventModel.id == event.id)
-            .values(attempts=settings.outbox_failed_max_attempts - 1)
-        )
+            .values(attempts=settings.outbox_failed_max_attempts - 1))
         await db_session.commit()
-        had_work = await outbox_publisher._publish_once()
+        had_work = await _publish_once(session_factory, broken_producer_factory)
         assert had_work is True
-        row = await repo.get_by_id(event.id)
+        row = await fetch_persisted_event(event.id)
         assert row.status == OutboxEventStatus.FAILED
         assert row.attempts == settings.outbox_failed_max_attempts
         assert row.next_retry_at is None
 
-    async def test_marks_event_pending_with_backoff_on_unreachable_kafka(self, db_session, monkeypatch):
-        monkeypatch.setattr(settings, "kafka_bootstrap_servers", "127.0.0.1:1")
-        repo = OutboxEventRepository(db_session)
+    async def test_marks_event_pending_with_backoff_on_unreachable_kafka(self, db_session, repo, session_factory,
+                                                                        broken_producer_factory, fetch_persisted_event):
         event = OutboxEventModel(id=uuid4(), topic="outbox-test-topic", key="k", payload="p")
         repo.register_event(event)
         await db_session.commit()
-        had_work = await outbox_publisher._publish_once()
+        had_work = await _publish_once(session_factory, broken_producer_factory)
         assert had_work is True
-        row = await repo.get_by_id(event.id)
+        row = await fetch_persisted_event(event.id)
         assert row.status == OutboxEventStatus.PENDING
         assert row.attempts == 1
         assert row.last_error is not None
         assert row.next_retry_at is not None
 
-    async def test_skips_event_with_future_retry_at(self, db_session, kafka_bootstrap_servers, monkeypatch):
-        monkeypatch.setattr(settings, "kafka_bootstrap_servers", kafka_bootstrap_servers)
-        repo = OutboxEventRepository(db_session)
+    async def test_skips_event_with_future_retry_at(self, db_session, repo, session_factory, real_producer_factory):
         event = OutboxEventModel(id=uuid4(), topic="outbox-test-topic", key="k", payload="p")
         repo.register_event(event)
         await db_session.commit()
@@ -131,12 +156,11 @@ class TestPublishOnce:
         await db_session.execute(
             update(OutboxEventModel).where(OutboxEventModel.id == event.id).values(next_retry_at=future))
         await db_session.commit()
-        had_work = await outbox_publisher._publish_once()
+        had_work = await _publish_once(session_factory, real_producer_factory)
         assert had_work is False
 
-    async def test_fails_permanently_stuck_event_without_publishing(self, db_session, kafka_bootstrap_servers, monkeypatch):
-        monkeypatch.setattr(settings, "kafka_bootstrap_servers", kafka_bootstrap_servers)
-        repo = OutboxEventRepository(db_session)
+    async def test_fails_permanently_stuck_event_without_publishing(self, db_session, repo, session_factory,
+                                                                    real_producer_factory, fetch_persisted_event):
         event = OutboxEventModel(id=uuid4(), topic="outbox-test-topic", key="k", payload="p")
         repo.register_event(event)
         await db_session.commit()
@@ -148,7 +172,7 @@ class TestPublishOnce:
             .where(OutboxEventModel.id == event.id)
             .values(updated_at=stale_time, stale_attempt=settings.outbox_stale_max_attempts))
         await db_session.commit()
-        had_work = await outbox_publisher._publish_once()
+        had_work = await _publish_once(session_factory, real_producer_factory)
         assert had_work is False
-        row = await repo.get_by_id(event.id)
+        row = await fetch_persisted_event(event.id)
         assert row.status == OutboxEventStatus.FAILED

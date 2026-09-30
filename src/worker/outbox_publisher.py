@@ -7,6 +7,9 @@ from src.config import settings
 from src.repositories.outbox_event import OutboxEventRepository
 from src.models.outbox_event import OutboxEventStatus
 from aiokafka.errors import KafkaError
+from typing import Callable, Awaitable
+from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+
 
 
 logger = logging.getLogger(__name__)
@@ -49,8 +52,9 @@ async def close_producer() -> None:
         _producer = None
 
 
-async def _publish_once() -> bool:
-    async with SessionFactory() as session:
+async def _publish_once( session_factory: async_sessionmaker[AsyncSession] = SessionFactory,
+    get_producer: Callable[[], Awaitable[AIOKafkaProducer]] = _get_producer) -> bool:
+    async with session_factory() as session:
         repo = OutboxEventRepository(session)
         await repo.fail_permanently_stuck()
         claimed = await repo.claim_batch()
@@ -59,7 +63,7 @@ async def _publish_once() -> bool:
         return False
     for event in claimed:
         try:
-            producer = await _get_producer()
+            producer = await get_producer()
             await producer.send_and_wait(
                 event.topic,
                 key=event.key.encode("utf-8"),
@@ -70,7 +74,7 @@ async def _publish_once() -> bool:
             new_attempts = event.attempts + 1
             new_status = _next_status(new_attempts, event.id)
             next_retry_at = _next_retry_at(new_attempts)
-            async with SessionFactory() as session:
+            async with session_factory() as session:
                 repo = OutboxEventRepository(session)
                 updated = await repo.mark_failed(event.id, event.version, new_attempts, new_status, next_retry_at, str(exc))
                 if not updated:
@@ -83,7 +87,7 @@ async def _publish_once() -> bool:
                     )
                 await session.commit()
             continue
-        async with SessionFactory() as session:
+        async with session_factory() as session:
             repo = OutboxEventRepository(session)
             updated = await repo.mark_published(event.id, event.version)
             if not updated:
@@ -98,10 +102,12 @@ async def _publish_once() -> bool:
     return True
 
 
-async def run_outbox_publisher(stop_event: asyncio.Event) -> None:
+async def run_outbox_publisher(stop_event: asyncio.Event,
+    session_factory: async_sessionmaker[AsyncSession] = SessionFactory,
+    get_producer: Callable[[], Awaitable[AIOKafkaProducer]] = _get_producer) -> None:
     while not stop_event.is_set():
         try:
-            had_work = await _publish_once()
+            had_work = await _publish_once(session_factory, get_producer)
         except Exception:
             logger.exception("Outbox publisher iteration failed")
             had_work = False
