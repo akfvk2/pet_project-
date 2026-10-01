@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 from typing import TYPE_CHECKING
 from src.models.base_model import Base
 
+
 if TYPE_CHECKING:
     from src.models.course import Course
 

@@ -7,7 +7,12 @@ from src.exceptions.not_found import NotFoundException
 from src.models.student import Students
 import src.services.student_service as svc_module
 from src.models.course import Course
-
+from sqlalchemy import select
+from src.services.student_events import StudentEventService
+from src.services.outbox_service import OutboxService
+from src.repositories.outbox_event import OutboxEventRepository
+from src.models.outbox_event import OutboxEventModel
+from src.config import settings
 
 
 @pytest.fixture
@@ -107,3 +112,14 @@ class TestStudentService:
             await student_service.update_student(
                 uuid4(),
                 StudentUpdate(name="Обновлённый", course={"title": "Django"}))
+
+    async def test_register_student_created_writes_outbox_event(db_session):
+        student = Students(id=uuid4(), name="Ivan", age=20, email="ivan@test.com", phone="+79990000000")
+        service = StudentEventService(OutboxService(OutboxEventRepository(db_session)))
+        service.register_student_created(student)
+        await db_session.commit()
+        result = await db_session.execute(select(OutboxEventModel).where(OutboxEventModel.key == str(student.id)))
+        row = result.scalar_one()
+        assert row.topic == settings.student_events_topic
+        assert "student_created" in row.payload
+        assert student.name in row.payload

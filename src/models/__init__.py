@@ -5,3 +5,4 @@ from src.models.book import Book
 from src.models.course import Course
 from src.models.student import Students
 from src.models.pending_confirmation import PendingConfirmationModel
+from src.models.outbox_event import OutboxEventModel
