@@ -14,6 +14,8 @@ from src.models.book import Book
 from src.models.course import Course
 from src.models.profile import ProfileModel
 from src.models.student import Students
+from src.models.room import RoomModel
+from src.models.booking import BookingModel
 from src.config import Settings
 
 # this is the Alembic Config object, which provides

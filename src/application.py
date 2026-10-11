@@ -3,7 +3,7 @@ from fastapi.responses import UJSONResponse
 from starlette.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from fastapi import APIRouter
-from src.routers.v1 import users, authors, students
+from src.routers.v1 import users, authors, students, bookings, rooms
 from src.exceptions.base import AppException, app_exception_handler
 import asyncio
 import contextlib
@@ -53,6 +53,8 @@ def get_app() -> FastAPI:
     api_v1_router.include_router(users.router, prefix="/users", tags=["users"])
     api_v1_router.include_router(authors.router, prefix="/authors", tags=["authors"])
     api_v1_router.include_router(students.router, prefix="/students", tags=["students"])
+    api_v1_router.include_router(bookings.router, prefix="/bookings", tags=["bookings"])
+    api_v1_router.include_router(rooms.router, prefix="/rooms", tags=["rooms"])
 
     app.include_router(api_v1_router)
     return app

@@ -152,3 +152,7 @@ class UserCreateWithOrder(UserCreate):
             description=self.order_description,
         )
 
+class UserBookingRead(BaseModel):
+    id: UUID
+    username: str
+    model_config = ConfigDict(from_attributes=True)
