@@ -16,7 +16,6 @@ class BookingStatus(str, Enum):
 
 class BookingModel(Base):
     __tablename__ = 'booking'
-    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     room_id: Mapped[UUID] = mapped_column(ForeignKey("rooms.id", ondelete="CASCADE"))
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     starts_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True))

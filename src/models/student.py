@@ -11,7 +11,6 @@ if TYPE_CHECKING:
 
 class Students(Base):
     __tablename__ = 'students'
-    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(sa.String())
     age: Mapped[int] = mapped_column(sa.Integer())
     email: Mapped[str] = mapped_column(sa.String())

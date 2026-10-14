@@ -4,9 +4,9 @@ from sqlalchemy.orm import selectinload
 from src.repositories.base_repository import BaseRepository
 from src.models.booking import BookingModel, BookingStatus
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy import update, select
 from uuid import UUID
 from datetime import datetime
+from sqlalchemy import update, select, text
 
 
 class BookingRepository(BaseRepository[BookingModel]):
@@ -24,7 +24,9 @@ class BookingRepository(BaseRepository[BookingModel]):
                 ends_at=booking.ends_at,
                 status=booking.status,
             )
-            .on_conflict_do_nothing(constraint="no_overlapping_bookings")
+            .on_conflict_do_nothing(
+                index_elements=["room_id", "starts_at", "ends_at"],
+                index_where=text("is_deleted = false"),)
         )
         result = await self.session.execute(stmt)
         return result.rowcount > 0
@@ -43,7 +45,10 @@ class BookingRepository(BaseRepository[BookingModel]):
                 }
                 for items in bookings
             ])
-            .on_conflict_do_nothing(constraint="no_overlapping_bookings")
+            .on_conflict_do_nothing(
+                index_elements=["room_id", "starts_at", "ends_at"],
+                index_where=text("is_deleted = false"),
+            )
         )
         result = await self.session.execute(stmt)
         return result.rowcount
@@ -74,3 +79,22 @@ class BookingRepository(BaseRepository[BookingModel]):
         )
         result = await self.session.execute(stmt)
         return result.rowcount > 0
+
+    async def lock_room(self, room_id: UUID) -> None:
+        await self.session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtext(:room_id))"),
+            {"room_id": str(room_id)},
+        )
+
+    async def has_overlap(self, room_id: UUID, starts_at: datetime, ends_at: datetime,
+                          exclude_booking_id: UUID | None = None) -> bool:
+        stmt = select(BookingModel).where(
+            BookingModel.room_id == room_id,
+            BookingModel.is_deleted == False,
+            BookingModel.starts_at < ends_at,
+            BookingModel.ends_at > starts_at,
+        )
+        if exclude_booking_id is not None:
+            stmt = stmt.where(BookingModel.id != exclude_booking_id)
+        result = await self.session.execute(stmt)
+        return result.scalars().first() is not None

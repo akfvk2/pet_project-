@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from fastapi.responses import UJSONResponse
+from fastapi.responses import ORJSONResponse
 from starlette.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from fastapi import APIRouter
@@ -28,12 +28,22 @@ async def lifespan(app: FastAPI):
     await close_producer()
 
 
+def _build_api_v1_router() -> APIRouter:
+    api_v1_router = APIRouter(prefix="/v1")
+    api_v1_router.include_router(users.router, prefix="/users", tags=["users"])
+    api_v1_router.include_router(authors.router, prefix="/authors", tags=["authors"])
+    api_v1_router.include_router(students.router, prefix="/students", tags=["students"])
+    api_v1_router.include_router(bookings.router, prefix="/bookings", tags=["bookings"])
+    api_v1_router.include_router(rooms.router, prefix="/rooms", tags=["rooms"])
+    return api_v1_router
+
+
 def get_app() -> FastAPI:
     logging.basicConfig(level=logging.INFO)
     app = FastAPI(
         docs_url='/docs',
         openapi_url='/openapi.json',
-        default_response_class=UJSONResponse,
+        default_response_class=ORJSONResponse,
         lifespan=lifespan,
     )
 
@@ -45,16 +55,8 @@ def get_app() -> FastAPI:
         allow_origins=['*'],
         allow_credentials=True,
         allow_methods=['*'],
-        allow_headers=['*'],
-    )
+        allow_headers=['*'],)
 
-    api_v1_router = APIRouter(prefix="/v1")
 
-    api_v1_router.include_router(users.router, prefix="/users", tags=["users"])
-    api_v1_router.include_router(authors.router, prefix="/authors", tags=["authors"])
-    api_v1_router.include_router(students.router, prefix="/students", tags=["students"])
-    api_v1_router.include_router(bookings.router, prefix="/bookings", tags=["bookings"])
-    api_v1_router.include_router(rooms.router, prefix="/rooms", tags=["rooms"])
-
-    app.include_router(api_v1_router)
+    app.include_router(_build_api_v1_router())
     return app

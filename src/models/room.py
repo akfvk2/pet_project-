@@ -11,6 +11,5 @@ if TYPE_CHECKING:
 
 class RoomModel(Base):
     __tablename__ = 'rooms'
-    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     roomname: Mapped[str] = mapped_column(sa.String())
     reservation: Mapped[list["BookingModel"]] = relationship("BookingModel", back_populates='room', lazy="selectin")

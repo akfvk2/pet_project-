@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     outbox_retry_max_seconds: float = Field(default=3600.0,env="OUTBOX_RETRY_MAX_SECONDS")
     outbox_stale_max_attempts: int = Field(default=5, env="OUTBOX_STALE_MAX_ATTEMPTS")
     exclusion_violation_sqlstate: str = Field(default="23P01", env="EXCLUSION_VIOLATION_SQLSTATE")
+    unique_violation_sqlstate: str = Field(default="23505", env="UNIQUE_VIOLATION_SQLSTATE")
 
     class Config:
         env_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')

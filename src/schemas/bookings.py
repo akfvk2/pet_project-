@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, model_validator
 from uuid import UUID, uuid4
-from src.exceptions.invalid_booking import InvalidBookingRangeError
+from src.exceptions.invalid_booking import InvalidBookingRangeException
 from datetime import datetime
 from src.models.booking import BookingStatus, BookingModel
 from src.schemas.rooms import RoomRead
@@ -19,7 +19,7 @@ class BookingCreate(BookingBase):
     @model_validator(mode="after")
     def validate_ends_at(self) -> "BookingCreate":
         if self.ends_at <= self.starts_at:
-            raise InvalidBookingRangeError(message='End date cannot be before start date')
+            raise InvalidBookingRangeException(message='End date cannot be before start date')
         return self
 
     def to_model(self) -> BookingModel:

@@ -2,6 +2,6 @@ from src.exceptions.base import AppException
 from fastapi import status
 
 
-class InvalidBookingRangeError(AppException):
+class InvalidBookingRangeException(AppException):
     def __init__(self, message: str = "Invalid booking range"):
-        super().__init__(message, status.HTTP_400_BAD_REQUEST)
+        super().__init__(message, 400)

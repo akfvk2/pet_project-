@@ -12,7 +12,7 @@ def room_repo(db_session):
 
 @pytest.fixture
 def service(db_session):
-    return RoomService(db_session)
+    return RoomService(RoomRepository(db_session))
 
 
 class TestCreateRoom:

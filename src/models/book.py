@@ -10,7 +10,6 @@ if TYPE_CHECKING:
 
 class Book(Base):
     __tablename__ = 'books'
-    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     title: Mapped[str] = mapped_column(sa.String())
     page_count: Mapped[int] = mapped_column(sa.Integer())
     genre: Mapped[str] = mapped_column(sa.String())
