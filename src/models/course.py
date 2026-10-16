@@ -9,7 +9,6 @@ if TYPE_CHECKING:
 
 class Course(Base):
     __tablename__ = 'courses'
-    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     title: Mapped[str] = mapped_column(sa.String())
     description: Mapped[str] = mapped_column(sa.String())
     duration_hours: Mapped[int] = mapped_column(sa.Integer())
