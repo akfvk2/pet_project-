@@ -2,24 +2,22 @@ import pytest
 from uuid import uuid4
 from src.repositories.room import RoomRepository
 from src.repositories.user import UserRepository
-from src.models.room import RoomModel, RoomStatus
+from src.models.room import RoomModel
 from src.models.user import UserModel
 
 
 @pytest.fixture
 async def room(db_session):
     repo = RoomRepository(db_session)
-    created = await repo.create(RoomModel(id=uuid4(), roomname="API Room", status=RoomStatus.Free))
-    await db_session.commit()
-    return created
+    return await repo.create(RoomModel(id=uuid4(), roomname="API Room"))
+
 
 
 @pytest.fixture
 async def user(db_session):
     repo = UserRepository(db_session)
-    created = await repo.create(UserModel(id=uuid4(), username="api_tester", email="api@example.com", age=30))
-    await db_session.commit()
-    return created
+    return await repo.create(UserModel(id=uuid4(), username="api_tester", email="api@example.com", age=30))
+
 
 
 class TestCreateBooking:

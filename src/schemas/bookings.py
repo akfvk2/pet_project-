@@ -25,6 +25,7 @@ class BookingCreate(BookingBase):
     def to_model(self) -> BookingModel:
         return BookingModel(id=uuid4(), status=BookingStatus.Active, **self.model_dump())
 
+
 class BookingRead(BookingBase):
     id: UUID
     status: BookingStatus
@@ -33,6 +34,8 @@ class BookingRead(BookingBase):
     model_config = ConfigDict(from_attributes=True)
 
 class BookingUpdate(BookingBase):
-    pass
+    def update_model(self, booking_entity: BookingModel) -> None:
+        for key, value in self.model_dump().items():
+            setattr(booking_entity, key, value)
 
 

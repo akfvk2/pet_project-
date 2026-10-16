@@ -6,8 +6,8 @@ from datetime import datetime
 from sqlalchemy.pool import NullPool
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from src.services.booking_service import BookingService
-from src.schemas.bookings import BookingCreate
-from src.exceptions.conflict import ConflictException
+from src.schemas.bookings import BookingCreate, BookingUpdate
+from src.exceptions.already_exists import AlreadyExistsException
 from src.exceptions.not_found import NotFoundException
 from src.repositories.room import RoomRepository
 from src.repositories.user import UserRepository
@@ -55,7 +55,7 @@ class TestCreate:
 
     async def test_overlapping_rejected(self, service, room, user):
         await service.create(make_booking_create(room.id, user.id, datetime(2026, 1, 2, 10, 0), datetime(2026, 1, 2, 11, 0)))
-        with pytest.raises(ConflictException):
+        with pytest.raises(AlreadyExistsException):
             await service.create(make_booking_create(room.id, user.id, datetime(2026, 1, 2, 10, 30), datetime(2026, 1, 2, 11, 30)))
 
     async def test_adjacent_bookings_allowed(self, service, room, user):
@@ -89,32 +89,13 @@ class TestUpdateSchedule:
     async def test_rechecks_overlap(self, service, room, user):
         await service.create(make_booking_create(room.id, user.id, datetime(2026, 1, 6, 10, 0), datetime(2026, 1, 6, 11, 0)))
         second = await service.create(make_booking_create(room.id, user.id, datetime(2026, 1, 6, 12, 0), datetime(2026, 1, 6, 13, 0)))
-        with pytest.raises(ConflictException):
-            await service.update_schedule(second.id, datetime(2026, 1, 6, 10, 30), datetime(2026, 1, 6, 11, 30))
+        with pytest.raises(AlreadyExistsException):
+            await service.update_time_interval(second.id, BookingUpdate(starts_at=datetime(2026, 1, 6, 10, 30), ends_at=datetime(2026, 1, 6, 11, 30)))
 
     async def test_update_success(self, service, room, user):
         booking = await service.create(make_booking_create(room.id, user.id, datetime(2026, 1, 7, 10, 0), datetime(2026, 1, 7, 11, 0)))
-        updated = await service.update_schedule(booking.id, datetime(2026, 1, 7, 14, 0), datetime(2026, 1, 7, 15, 0))
+        updated = await service.update_time_interval(booking.id, BookingUpdate(starts_at=datetime(2026, 1, 7, 14, 0), ends_at=datetime(2026, 1, 7, 15, 0)))
         assert updated.starts_at == datetime(2026, 1, 7, 14, 0)
-
-
-class TestCreateBatch:
-    async def test_batch_success(self, service, room, user):
-        bookings_in = [
-            make_booking_create(room.id, user.id, datetime(2026, 1, 8, 10, 0), datetime(2026, 1, 8, 11, 0)),
-            make_booking_create(room.id, user.id, datetime(2026, 1, 8, 12, 0), datetime(2026, 1, 8, 13, 0)),
-        ]
-        results = await service.create_batch(bookings_in)
-        assert len(results) == 2
-
-    async def test_batch_partial_conflict_rejects_whole_batch(self, service, room, user):
-        await service.create(make_booking_create(room.id, user.id, datetime(2026, 1, 9, 10, 0), datetime(2026, 1, 9, 11, 0)))
-        bookings_in = [
-            make_booking_create(room.id, user.id, datetime(2026, 1, 9, 14, 0), datetime(2026, 1, 9, 15, 0)),
-            make_booking_create(room.id, user.id, datetime(2026, 1, 9, 10, 30), datetime(2026, 1, 9, 11, 30)),
-        ]
-        with pytest.raises(ConflictException):
-            await service.create_batch(bookings_in)
 
 
 class TestConcurrentCreate:
@@ -142,7 +123,7 @@ class TestConcurrentCreate:
         )
 
         successes = [r for r in results if not isinstance(r, Exception)]
-        conflicts = [r for r in results if isinstance(r, ConflictException)]
+        conflicts = [r for r in results if isinstance(r, AlreadyExistsException)]
         assert len(successes) == 1
         assert len(conflicts) == 1
 

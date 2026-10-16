@@ -1,11 +1,10 @@
-from typing import List
 from uuid import UUID
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.repositories.booking import BookingRepository
-from src.schemas.bookings import BookingCreate, BookingRead
+from src.schemas.bookings import BookingCreate, BookingRead, BookingUpdate
 from src.mappers.booking_mapper import BookingMapper
-from src.exceptions.conflict import ConflictException
+from src.exceptions.already_exists import AlreadyExistsException
 from src.exceptions.not_found import NotFoundException
 from src.services.service_helpers import get_by_id_or_fail
 from fastapi import Depends
@@ -19,42 +18,23 @@ class BookingService:
         self.repo = repo
 
     async def create(self, booking_in: BookingCreate) -> BookingRead:
-        booking = BookingMapper.to_model(booking_in)
+        booking = booking_in.to_model()
         await self.repo.lock_room(booking.room_id)
         if await self.repo.has_overlap(booking.room_id, booking.starts_at, booking.ends_at):
-            raise ConflictException()
-        created = await self.repo.create(booking)
-        if not created:
-            raise ConflictException()
+            raise AlreadyExistsException()
+        await self.repo.create(booking)
         booking = await self.repo.get_by_id(booking.id)
         return BookingMapper.to_read(booking)
 
-    async def create_batch(self, bookings_in: List[BookingCreate]) -> List[BookingRead]:
-        bookings = BookingMapper.to_models(bookings_in)
-        room_ids = sorted({booking.room_id for booking in bookings_in})
-        for room_id in room_ids:
-            await self.repo.lock_room(room_id)
-        for i, a in enumerate(bookings):
-            for b in bookings[i + 1:]:
-                if a.room_id == b.room_id and a.starts_at < b.ends_at and b.starts_at < a.ends_at:
-                    raise ConflictException()
-        for booking in bookings:
-            if await self.repo.has_overlap(booking.room_id, booking.starts_at, booking.ends_at):
-                raise ConflictException()
-        await self.repo.create_batch(bookings)
-        bookings = [await self.repo.get_by_id(b.id) for b in bookings]
-        return BookingMapper.to_reads(bookings)
-
-    async def update_schedule(self, booking_id: UUID, starts_at: datetime, ends_at: datetime) -> BookingRead:
+    async def update_time_interval(self, booking_id: UUID, booking_in: BookingUpdate) -> BookingRead:
         booking = await get_by_id_or_fail(self.repo, booking_id, "Booking")
         await self.repo.lock_room(booking.room_id)
-        if await self.repo.has_overlap(booking.room_id, starts_at, ends_at, exclude_booking_id=booking.id):
-            raise ConflictException()
-        updated = await self.repo.update_schedule(booking, starts_at, ends_at)
+        if await self.repo.has_overlap(booking.room_id, booking_in.starts_at, booking_in.ends_at, exclude_booking_id=booking.id):
+            raise AlreadyExistsException()
+        updated = await self.repo.update_schedule(booking, booking_in.starts_at, booking_in.ends_at)
         if not updated:
             raise NotFoundException("Booking not found")
-        booking.starts_at = starts_at
-        booking.ends_at = ends_at
+        booking_in.update_model(booking)
         return BookingMapper.to_read(booking)
 
     async def cancel_booking(self, booking_id: UUID) -> bool:

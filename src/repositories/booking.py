@@ -31,27 +31,7 @@ class BookingRepository(BaseRepository[BookingModel]):
         result = await self.session.execute(stmt)
         return result.rowcount > 0
 
-    async def create_batch(self, bookings: List[BookingModel]) -> int:
-        stmt = (
-            pg_insert(BookingModel)
-            .values([
-                {
-                    "id": items.id,
-                    "room_id": items.room_id,
-                    "user_id": items.user_id,
-                    "starts_at": items.starts_at,
-                    "ends_at": items.ends_at,
-                    "status": items.status,
-                }
-                for items in bookings
-            ])
-            .on_conflict_do_nothing(
-                index_elements=["room_id", "starts_at", "ends_at"],
-                index_where=text("is_deleted = false"),
-            )
-        )
-        result = await self.session.execute(stmt)
-        return result.rowcount
+
 
     async def update_schedule(self, booking: BookingModel, starts_at: datetime, ends_at: datetime) -> bool:
         stmt = (

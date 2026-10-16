@@ -91,7 +91,12 @@ def order_client():
 async def client(db_session, redis_url):
     app = get_app()
     async def override_get_session():
-        yield db_session
+        try:
+            yield db_session
+            await db_session.commit()
+        except Exception:
+            await db_session.rollback()
+            raise
     app.dependency_overrides[get_session] = override_get_session
     cache_module.redis_client = RedisClient(redis_url)
     with respx.mock(base_url=settings.order_service_url, assert_all_called=False) as mock:
