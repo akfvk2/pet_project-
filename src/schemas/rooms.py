@@ -12,8 +12,7 @@ class RoomRead(BaseModel):
 
 class RoomCreate(BaseModel):
     roomname: str
-    def to_model(self) -> RoomModel:
-        return RoomModel(id=uuid4(), **self.model_dump())
+
 
 
     @field_validator("roomname")

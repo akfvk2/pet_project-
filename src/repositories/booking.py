@@ -1,6 +1,7 @@
-from typing import List
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from src.db import get_session
 from src.repositories.base_repository import BaseRepository
 from src.models.booking import BookingModel, BookingStatus
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -10,10 +11,10 @@ from sqlalchemy import update, select, text
 
 
 class BookingRepository(BaseRepository[BookingModel]):
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession = Depends(get_session)):
         super().__init__(BookingModel, session)
 
-    async def create(self, booking: BookingModel) -> bool:
+    async def create(self, booking: BookingModel) -> None:
         stmt = (
             pg_insert(BookingModel)
             .values(
@@ -28,19 +29,17 @@ class BookingRepository(BaseRepository[BookingModel]):
                 index_elements=["room_id", "starts_at", "ends_at"],
                 index_where=text("is_deleted = false"),)
         )
-        result = await self.session.execute(stmt)
-        return result.rowcount > 0
+        await self.session.execute(stmt)
 
 
-
-    async def update_schedule(self, booking: BookingModel, starts_at: datetime, ends_at: datetime) -> bool:
+    async def update_schedule(self, booking: BookingModel, starts_at: datetime, ends_at: datetime) -> None:
         stmt = (
             update(BookingModel)
             .where(BookingModel.id == booking.id)
             .values(starts_at=starts_at, ends_at=ends_at)
         )
-        result = await self.session.execute(stmt)
-        return result.rowcount > 0
+        await self.session.execute(stmt)
+
 
     async def get_by_id(self, obj_id: UUID) -> BookingModel | None:
         stmt = (
@@ -55,7 +54,7 @@ class BookingRepository(BaseRepository[BookingModel]):
         stmt = (
             update(BookingModel)
             .where(BookingModel.id == obj_id)
-            .values(is_deleted=True, status=BookingStatus.Cancelled.value)
+            .values(is_deleted=True, status=BookingStatus.CANCELLED.value)
         )
         result = await self.session.execute(stmt)
         return result.rowcount > 0

@@ -1,17 +1,13 @@
 from uuid import UUID
-from src.db import get_session
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 from src.repositories.room import RoomRepository
 from src.schemas.rooms import RoomCreate, RoomRead
 from src.services.service_helpers import get_by_id_or_fail
 from src.mappers.room_mapper import RoomMapper
 
-async def get_room_repository(session: AsyncSession = Depends(get_session)) -> RoomRepository:
-    return RoomRepository(session)
 
 class RoomService:
-    def __init__(self, repo: RoomRepository = Depends(get_room_repository)):
+    def __init__(self, repo: RoomRepository = Depends(RoomRepository)):
         self.repo = repo
 
     async def create(self, room_in: RoomCreate) -> RoomRead:
