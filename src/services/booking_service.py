@@ -14,7 +14,7 @@ class BookingService:
         self.repo = repo
 
     async def create(self, booking_in: BookingCreate) -> BookingRead:
-        booking = BookingMapper.to_model(booking_in)
+        booking = booking_in.to_model()
         await self.repo.lock_room(booking.room_id)
         if await self.repo.has_overlap(booking.room_id, booking.starts_at, booking.ends_at):
             raise AlreadyExistsException("Room is already booked for this time range")

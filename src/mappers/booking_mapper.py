@@ -12,8 +12,7 @@ class BookingMapper:
         for key, value in booking_in.model_dump().items():
             setattr(booking_entity, key, value)
 
-    @staticmethod
-    def to_model(booking_in: BookingCreate) -> BookingModel:
-        return BookingModel(id=uuid4(), status=BookingStatus.ACTIVE, **booking_in.model_dump())
+
+
 
 

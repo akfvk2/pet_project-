@@ -24,3 +24,6 @@ class RoomCreate(BaseModel):
         if len(cleaned_value) < 2:
             raise ValidationException(message='Please provide a real room name')
         return cleaned_value
+
+    def to_model(self) -> RoomModel:
+        return RoomModel(id=uuid4(), **self.model_dump())
