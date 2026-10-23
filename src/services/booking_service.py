@@ -28,7 +28,7 @@ class BookingService:
         if await self.repo.has_overlap(booking.room_id, booking_in.starts_at, booking_in.ends_at, exclude_booking_id=booking.id):
             raise AlreadyExistsException("Room is already booked for this time range")
         await self.repo.update_schedule(booking, booking_in.starts_at, booking_in.ends_at)
-        BookingMapper.update_model(booking_in, booking)
+        booking = BookingMapper.update_model(booking_in, booking)
         return BookingMapper.to_read(booking)
 
     async def cancel_booking(self, booking_id: UUID) -> bool:
