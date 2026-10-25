@@ -1,9 +1,11 @@
 from src.schemas.rooms import RoomRead
 from src.models.room import RoomModel
-from uuid import uuid4
+from typing import Annotated
+from fastapi import Depends
 
 
 class RoomMapper:
-    @staticmethod
-    def to_read(room: RoomModel) -> RoomRead:
+    def to_read(self, room: RoomModel) -> RoomRead:
         return RoomRead.model_validate(room)
+
+RoomMapperDep = Annotated[RoomMapper, Depends(RoomMapper)]

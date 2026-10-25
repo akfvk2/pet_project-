@@ -1,17 +1,17 @@
-from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from src.db import get_session
 from src.repositories.base_repository import BaseRepository
 from src.models.booking import BookingModel, BookingStatus
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from uuid import UUID
 from datetime import datetime
 from sqlalchemy import update, select, text
+from typing import Annotated
+from fastapi import Depends
+from src.db import SessionDep
 
 
 class BookingRepository(BaseRepository[BookingModel]):
-    def __init__(self, session: AsyncSession = Depends(get_session)):
+    def __init__(self, session: SessionDep):
         super().__init__(BookingModel, session)
 
     async def create(self, booking: BookingModel) -> None:
@@ -77,3 +77,5 @@ class BookingRepository(BaseRepository[BookingModel]):
             stmt = stmt.where(BookingModel.id != exclude_booking_id)
         result = await self.session.execute(stmt)
         return result.scalars().first() is not None
+
+BookingRepositoryDep = Annotated[BookingRepository, Depends(BookingRepository)]

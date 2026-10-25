@@ -1,5 +1,7 @@
 import pytest
 from uuid import uuid4
+
+from src.mappers.room_mapper import RoomMapper
 from src.services.room_service import RoomService
 from src.schemas.rooms import RoomCreate
 from src.exceptions.not_found import NotFoundException
@@ -12,7 +14,7 @@ def room_repo(db_session):
 
 @pytest.fixture
 def service(db_session):
-    return RoomService(RoomRepository(db_session))
+    return RoomService(RoomRepository(db_session), RoomMapper())
 
 
 class TestCreateRoom:

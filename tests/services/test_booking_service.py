@@ -5,6 +5,8 @@ from uuid import uuid4
 from datetime import datetime
 from sqlalchemy.pool import NullPool
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+
+from src.mappers.booking_mapper import BookingMapper
 from src.services.booking_service import BookingService
 from src.schemas.bookings import BookingCreate, BookingUpdate
 from src.exceptions.already_exists import AlreadyExistsException
@@ -35,7 +37,7 @@ async def user(db_session):
 
 @pytest.fixture
 def service(db_session):
-    return BookingService(BookingRepository(db_session))
+    return BookingService(BookingRepository(db_session), BookingMapper())
 
 @pytest.fixture
 def room_repo(db_session):
@@ -104,8 +106,8 @@ class TestConcurrentCreate:
         engine2 = create_async_engine(db_url, poolclass=NullPool)
         session1 = async_sessionmaker(engine1, class_=AsyncSession, expire_on_commit=False)()
         session2 = async_sessionmaker(engine2, class_=AsyncSession, expire_on_commit=False)()
-        service1 = BookingService(BookingRepository(session1))
-        service2 = BookingService(BookingRepository(session2))
+        service1 = BookingService(BookingRepository(session1), BookingMapper())
+        service2 = BookingService(BookingRepository(session2), BookingMapper())
 
         async def create_and_commit(service, session, booking_in):
             try:
