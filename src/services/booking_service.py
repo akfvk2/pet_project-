@@ -5,8 +5,6 @@ from src.mappers.booking_mapper import BookingMapperDep
 from src.exceptions.already_exists import AlreadyExistsException
 from src.exceptions.not_found import NotFoundException
 from src.services.service_helpers import get_by_id_or_fail
-from fastapi import Depends
-from typing import Annotated
 
 
 
@@ -45,7 +43,7 @@ class BookingService:
         return self.mapper.to_read(booking)
 
 
-BookingServiceDep = Annotated[BookingService, Depends(BookingService)]
+
 
 
 

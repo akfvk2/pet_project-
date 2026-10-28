@@ -1,9 +1,14 @@
 from fastapi import APIRouter, status
 from src.schemas import bookings
-from src.services.booking_service import BookingServiceDep
+from src.services.booking_service import BookingService
 from uuid import UUID
+from fastapi import Depends
+from typing import Annotated
+
 
 router = APIRouter()
+
+BookingServiceDep = Annotated[BookingService, Depends(BookingService)]
 
 @router.post("/", response_model=bookings.BookingRead, status_code=status.HTTP_201_CREATED)
 async def create_booking(booking_in: bookings.BookingCreate, service: BookingServiceDep):

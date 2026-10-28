@@ -1,9 +1,13 @@
 from fastapi import APIRouter, status
 from src.schemas import rooms
-from src.services.room_service import RoomServiceDep
+from src.services.room_service import RoomService
 from uuid import UUID
+from fastapi import Depends
+from typing import Annotated
 
 router = APIRouter()
+
+RoomServiceDep = Annotated[RoomService, Depends(RoomService)]
 
 @router.post("/", response_model=rooms.RoomRead, status_code=status.HTTP_201_CREATED)
 async def create_room(room_in: rooms.RoomCreate, service: RoomServiceDep):

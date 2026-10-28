@@ -1,10 +1,9 @@
 from uuid import UUID
-from fastapi import Depends
 from src.repositories.room import RoomRepositoryDep
 from src.schemas.rooms import RoomCreate, RoomRead
 from src.services.service_helpers import get_by_id_or_fail
 from src.mappers.room_mapper import RoomMapperDep
-from typing import Annotated
+
 
 
 
@@ -27,4 +26,3 @@ class RoomService:
         await self.repo.delete(room)
         return True
 
-RoomServiceDep = Annotated[RoomService, Depends(RoomService)]
