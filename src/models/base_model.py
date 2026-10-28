@@ -1,3 +1,4 @@
+from uuid import UUID, uuid4
 import sqlalchemy as sa
 from sqlalchemy.orm import DeclarativeMeta, Mapped, declarative_base, mapped_column, relationship
 from datetime import datetime
@@ -8,6 +9,7 @@ metadata = sa.MetaData()
 
 
 class BaseServiceModel:
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
     is_deleted: Mapped[bool] = mapped_column(default=False)

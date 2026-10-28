@@ -11,7 +11,6 @@ if TYPE_CHECKING:
 
 class Author(Base):
     __tablename__ = 'authors'
-    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(sa.String())
     biography: Mapped[str] = mapped_column(sa.String())
     birth_date: Mapped[datetime] = mapped_column(sa.DateTime())

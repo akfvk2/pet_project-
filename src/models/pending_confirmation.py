@@ -8,7 +8,6 @@ from datetime import datetime
 
 class PendingConfirmationModel(Base):
     __tablename__ = 'pending_confirmations'
-    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     reference_id: Mapped[UUID] = mapped_column(default=uuid4, unique=True)
     status: Mapped[str] = mapped_column(sa.String(), nullable=False, server_default="pending", default="pending")

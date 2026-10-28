@@ -15,7 +15,6 @@ class OutboxEventStatus(str, Enum):
 
 class OutboxEventModel(Base):
     __tablename__ = 'outbox_events'
-    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     topic: Mapped[str] = mapped_column(sa.String(), nullable=False)
     key: Mapped[str] = mapped_column(sa.String(), nullable=False)
     payload: Mapped[str] = mapped_column(sa.Text(), nullable=False)
