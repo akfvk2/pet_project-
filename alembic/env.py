@@ -16,6 +16,10 @@ from src.models.profile import ProfileModel
 from src.models.student import Students
 from src.models.room import RoomModel
 from src.models.booking import BookingModel
+from src.models.product import ProductModel
+from src.models.order import OrderModel
+from src.models.order_item import OrderItemModel
+
 from src.config import Settings
 
 # this is the Alembic Config object, which provides
