@@ -1,8 +1,8 @@
 from uuid import UUID
-from src.repositories.room import RoomRepositoryDep
+from src.dependencies import RoomRepositoryDep
 from src.schemas.rooms import RoomCreate, RoomRead
 from src.services.service_helpers import get_by_id_or_fail
-from src.mappers.room_mapper import RoomMapperDep
+from src.dependencies import RoomMapperDep
 
 
 

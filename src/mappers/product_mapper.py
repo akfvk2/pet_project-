@@ -8,4 +8,3 @@ class ProductMapper:
     def to_read(self, product: ProductModel) -> ProductRead:
         return ProductRead.model_validate(product)
 
-ProductMapperDep = Annotated[ProductMapper, Depends(ProductMapper)]

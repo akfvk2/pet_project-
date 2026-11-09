@@ -9,4 +9,3 @@ class OrderMapper:
         return OrderRead.model_validate(order)
 
 
-OrderMapperDep = Annotated[OrderMapper, Depends(OrderMapper)]

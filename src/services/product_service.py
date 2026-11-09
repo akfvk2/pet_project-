@@ -1,8 +1,10 @@
 from uuid import UUID
-from src.repositories.product import ProductRepositoryDep
+from src.exceptions.insufficient import InsufficientException
+from src.exceptions.not_found import NotFoundException
+from src.dependencies import ProductRepositoryDep
 from src.schemas.products import ProductCreate, ProductRead, ProductUpdate
 from src.services.service_helpers import get_by_id_or_fail
-from src.mappers.product_mapper import ProductMapperDep
+from src.dependencies import ProductMapperDep
 
 
 
@@ -24,6 +26,8 @@ class ProductService:
         product_entity = await get_by_id_or_fail(self.repo, product_id, "Product")
         product = product_in.update_model(product_entity)
         updated_product = await self.repo.update(product)
+        if not updated_product:
+            raise InsufficientException("Product insufficient")
         return self.mapper.to_read(updated_product)
 
     async def delete(self, product_id: UUID) -> bool:

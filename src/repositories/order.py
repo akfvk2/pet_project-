@@ -20,11 +20,11 @@ class OrderRepository(BaseRepository[OrderModel]):
         stmt = (
             update(OrderModel)
             .where(OrderModel.id == order_id, OrderModel.status == OrderStatus.PENDING, OrderModel.is_deleted == False)
-            .values(status=OrderStatus.CANCELLED.value, is_deleted=True)
+            .values(status=OrderStatus.CANCELLED.value)
         )
         result = await self.session.execute(stmt)
         return result.rowcount > 0
 
 
-OrderRepositoryDep = Annotated[OrderRepository, Depends(OrderRepository)]
+
 

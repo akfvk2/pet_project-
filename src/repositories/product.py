@@ -1,10 +1,10 @@
 from src.repositories.base_repository import BaseRepository
-from typing import Annotated
 from uuid import UUID
-from fastapi import Depends
-from sqlalchemy import update, text, select
+from sqlalchemy import update, case, select
 from src.db import SessionDep
 from src.models.product import ProductModel
+from src.config import settings
+
 
 class ProductRepository(BaseRepository[ProductModel]):
     def __init__(self, session: SessionDep):
@@ -15,26 +15,39 @@ class ProductRepository(BaseRepository[ProductModel]):
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
-    async def lock_product(self, product_id: UUID) -> None:
-        await self.session.execute(
-            text("SELECT pg_advisory_xact_lock(hashtext(:product_id))"),
-            {"product_id": str(product_id)},
-        )
-
-    async def decrease_stock(self, product_id: UUID, quantity: int) -> None:
+    async def increase_stock_batch(self, quantities: dict[UUID, int]) -> None:
+        if not quantities:
+            return
+        increments = case(quantities, value=ProductModel.id, else_=settings.stock_case_else_value)
         stmt = (
             update(ProductModel)
-            .where(ProductModel.id == product_id, ProductModel.is_deleted == False)
-            .values(stock=ProductModel.stock - quantity)
-        )
+            .where(ProductModel.id.in_(quantities), ProductModel.is_deleted == False,)
+            .values(stock=ProductModel.stock + increments))
         await self.session.execute(stmt)
 
-    async def increase_stock(self, product_id: UUID, quantity: int) -> None:
+    async def get_many_for_update(self, product_ids: list[UUID]) -> list[ProductModel]:
+        if not product_ids:
+            return []
+        stmt = (
+            select(ProductModel)
+            .where(
+                ProductModel.id.in_(product_ids), ProductModel.is_deleted == False,)
+            .order_by(ProductModel.id)
+            .with_for_update())
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def decrease_stock_batch(self, quantities: dict[UUID, int]) -> int:
+        if not quantities:
+            return 0
+        decrements = case(
+            quantities,
+            value=ProductModel.id,
+            else_=0)
         stmt = (
             update(ProductModel)
-            .where(ProductModel.id == product_id, ProductModel.is_deleted == False)
-            .values(stock=ProductModel.stock + quantity)
-        )
-        await self.session.execute(stmt)
-
-ProductRepositoryDep = Annotated[ProductRepository, Depends(ProductRepository)]
+            .where(
+                ProductModel.id.in_(quantities), ProductModel.is_deleted == False, ProductModel.stock >= decrements)
+            .values(stock=ProductModel.stock - decrements))
+        result = await self.session.execute(stmt)
+        return result.rowcount or 0

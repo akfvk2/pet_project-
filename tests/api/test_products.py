@@ -23,7 +23,7 @@ class TestCreateProductAPI:
         data = response.json()
         assert "id" in data
         assert data["name"] == "Мышь Logitech"
-        assert data["price"] == 49.99
+        assert data["price"] == "49.99"
         assert data["stock"] == 50
 
     async def test_create_product_long_name_fails_validation(self, client: AsyncClient):
@@ -71,7 +71,7 @@ class TestUpdateProductAPI:
         assert response.status_code == 200
         data = response.json()
         assert data["name"] == "Обновленный Товар"
-        assert data["price"] == 450.0
+        assert data["price"] == "450.00"
         assert data["stock"] == 8
 
     async def test_update_product_not_found(self, client: AsyncClient):

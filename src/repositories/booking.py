@@ -78,4 +78,3 @@ class BookingRepository(BaseRepository[BookingModel]):
         result = await self.session.execute(stmt)
         return result.scalars().first() is not None
 
-BookingRepositoryDep = Annotated[BookingRepository, Depends(BookingRepository)]

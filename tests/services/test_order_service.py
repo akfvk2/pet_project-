@@ -10,7 +10,7 @@ from src.exceptions.not_found import NotFoundException
 from src.repositories.order import OrderRepository
 from src.repositories.product import ProductRepository
 from src.models.product import ProductModel
-
+from src.services.order_inventory_service import OrderInventoryService
 
 @pytest_asyncio.fixture
 async def product(db_session):
@@ -27,7 +27,9 @@ def product_repo(db_session):
 
 @pytest.fixture
 def service(db_session):
-    return OrderService(OrderRepository(db_session), ProductRepository(db_session), OrderMapper())
+    product_repo = ProductRepository(db_session)
+    inventory_service = OrderInventoryService(product_repo)
+    return OrderService(OrderRepository(db_session), inventory_service, OrderMapper(),)
 
 
 def make_order_create(product_id, quantity):

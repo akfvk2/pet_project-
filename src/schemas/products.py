@@ -2,11 +2,12 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from src.models.product import ProductModel
 from uuid import UUID, uuid4
 from src.exceptions.validation_error import ValidationException
+from decimal import Decimal
 
 
 class ProductCreate(BaseModel):
     name: str
-    price: float
+    price: Decimal
     stock: int
 
     @field_validator('name')
@@ -42,7 +43,7 @@ class ProductRead(ProductCreate):
 
 class ProductUpdate(BaseModel):
     name: str | None = None
-    price: float | None = None
+    price: Decimal | None = None
     stock: int | None = None
 
     @field_validator('name')

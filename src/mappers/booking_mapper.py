@@ -12,4 +12,3 @@ class BookingMapper:
             setattr(booking_entity, key, value)
         return booking_entity
 
-BookingMapperDep = Annotated[BookingMapper, Depends(BookingMapper)]
