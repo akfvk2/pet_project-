@@ -21,4 +21,3 @@ class RoomRepository(BaseRepository[RoomModel]):
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
-RoomRepositoryDep = Annotated[RoomRepository, Depends(RoomRepository)]
