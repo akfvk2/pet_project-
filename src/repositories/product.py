@@ -15,19 +15,16 @@ class ProductRepository(BaseRepository[ProductModel]):
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
-    async def increase_stock_batch(self, quantities: dict[UUID, int]) -> None:
-        if not quantities:
-            return
+    async def increase_stock_batch(self, quantities: dict[UUID, int]) -> int:
         increments = case(quantities, value=ProductModel.id, else_=settings.stock_case_else_value)
         stmt = (
             update(ProductModel)
-            .where(ProductModel.id.in_(quantities), ProductModel.is_deleted == False,)
+            .where(ProductModel.id.in_(quantities))
             .values(stock=ProductModel.stock + increments))
-        await self.session.execute(stmt)
+        result = await self.session.execute(stmt)
+        return result.rowcount or 0
 
     async def get_many_for_update(self, product_ids: list[UUID]) -> list[ProductModel]:
-        if not product_ids:
-            return []
         stmt = (
             select(ProductModel)
             .where(
@@ -38,8 +35,6 @@ class ProductRepository(BaseRepository[ProductModel]):
         return list(result.scalars().all())
 
     async def decrease_stock_batch(self, quantities: dict[UUID, int]) -> int:
-        if not quantities:
-            return 0
         decrements = case(
             quantities,
             value=ProductModel.id,

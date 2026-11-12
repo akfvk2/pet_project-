@@ -2,27 +2,26 @@ from fastapi import APIRouter, Depends, status
 from src.schemas import bookings
 from src.services.booking_service import BookingService
 from uuid import UUID
-
+from typing import Annotated
 
 
 router = APIRouter()
 
 
-
 @router.post("/", response_model=bookings.BookingRead, status_code=status.HTTP_201_CREATED)
-async def create_booking(booking_in: bookings.BookingCreate, service: BookingService = Depends(BookingService)):
+async def create_booking(booking_in: bookings.BookingCreate, service: Annotated[BookingService, Depends(BookingService)]):
     return await service.create(booking_in)
 
 @router.get("/{booking_id}", response_model=bookings.BookingRead)
-async def read_bookings(booking_id: UUID, service: BookingService = Depends(BookingService)):
+async def read_bookings(booking_id: UUID, service: Annotated[BookingService, Depends(BookingService)]):
     return await service.get_by_id(booking_id)
 
 @router.put("/{booking_id}", response_model=bookings.BookingRead)
-async def update_booking(booking_id: UUID, booking_in: bookings.BookingUpdate, service: BookingService = Depends(BookingService)):
+async def update_booking(booking_id: UUID, booking_in: bookings.BookingUpdate, service: Annotated[BookingService, Depends(BookingService)]):
     return await service.update_time_interval(booking_id, booking_in)
 
 @router.delete("/{booking_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_booking(booking_id: UUID, service: BookingService = Depends(BookingService)):
+async def delete_booking(booking_id: UUID, service: Annotated[BookingService, Depends(BookingService)]):
     return await service.cancel_booking(booking_id)
 
 

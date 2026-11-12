@@ -68,10 +68,10 @@ class TestCancelOrderAPI:
         response = await client.put(f"/v1/orders/{order_id}")
         assert response.status_code == 204
 
-    async def test_double_cancel_returns_404(self, client: AsyncClient, product: dict):
+    async def test_double_cancel_returns_409(self, client: AsyncClient, product: dict):
         created = await client.post("/v1/orders/", json={
             "items": [{"product_id": product["id"], "quantity": 2}]})
         order_id = created.json()["id"]
         await client.put(f"/v1/orders/{order_id}")
         response = await client.put(f"/v1/orders/{order_id}")
-        assert response.status_code == 404
+        assert response.status_code == 409

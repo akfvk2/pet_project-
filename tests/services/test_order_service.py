@@ -11,6 +11,7 @@ from src.repositories.order import OrderRepository
 from src.repositories.product import ProductRepository
 from src.models.product import ProductModel
 from src.services.order_inventory_service import OrderInventoryService
+from src.exceptions.already_exists import AlreadyExistsException
 
 @pytest_asyncio.fixture
 async def product(db_session):
@@ -64,7 +65,7 @@ class TestCancel:
     async def test_double_cancel_does_not_double_restore(self, service, product, db_session):
         created = await service.create_order(make_order_create(product.id, 4))
         await service.cancel_order(created.id)
-        with pytest.raises(NotFoundException):
+        with pytest.raises(AlreadyExistsException):
             await service.cancel_order(created.id)
         await db_session.refresh(product)
         assert product.stock == 10

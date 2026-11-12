@@ -1,10 +1,10 @@
 from uuid import UUID
 from src.exceptions.insufficient import InsufficientException
 from src.exceptions.not_found import NotFoundException
-from src.dependencies import ProductRepositoryDep
+from src.dependencies.products import ProductRepositoryDep
 from src.schemas.products import ProductCreate, ProductRead, ProductUpdate
 from src.services.service_helpers import get_by_id_or_fail
-from src.dependencies import ProductMapperDep
+from src.dependencies.products import ProductMapperDep
 
 
 

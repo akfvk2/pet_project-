@@ -1,7 +1,7 @@
 from uuid import UUID
-from src.dependencies import BookingRepositoryDep
+from src.dependencies.bookings import BookingRepositoryDep
 from src.schemas.bookings import BookingCreate, BookingRead, BookingUpdate
-from src.dependencies import BookingMapperDep
+from src.dependencies.bookings import BookingMapperDep
 from src.exceptions.already_exists import AlreadyExistsException
 from src.exceptions.not_found import NotFoundException
 from src.services.service_helpers import get_by_id_or_fail
