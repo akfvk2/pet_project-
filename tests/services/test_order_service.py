@@ -12,6 +12,7 @@ from src.repositories.product import ProductRepository
 from src.models.product import ProductModel
 from src.services.order_inventory_service import OrderInventoryService
 from src.exceptions.already_exists import AlreadyExistsException
+from src.mappers.order_item_mapper import OrderItemMapper
 
 @pytest_asyncio.fixture
 async def product(db_session):
@@ -30,7 +31,10 @@ def product_repo(db_session):
 def service(db_session):
     product_repo = ProductRepository(db_session)
     inventory_service = OrderInventoryService(product_repo)
-    return OrderService(OrderRepository(db_session), inventory_service, OrderMapper(),)
+    return OrderService(order_repo = OrderRepository(db_session),
+                        inventory_service = inventory_service,
+                        mapper = OrderMapper(),
+                        mapper_item = OrderItemMapper())
 
 
 def make_order_create(product_id, quantity):
@@ -73,7 +77,6 @@ class TestCancel:
     async def test_cancel_not_found(self, service):
         with pytest.raises(NotFoundException):
             await service.cancel_order(uuid4())
-
 
 class TestPriceSnapshot:
     async def test_price_change_does_not_affect_existing_order(self, service, product, product_repo, db_session):

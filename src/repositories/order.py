@@ -1,5 +1,3 @@
-from typing import Annotated
-from fastapi import Depends
 from src.models.order import OrderModel, OrderStatus
 from src.repositories.base_repository import BaseRepository
 from src.db import SessionDep
@@ -25,6 +23,10 @@ class OrderRepository(BaseRepository[OrderModel]):
         result = await self.session.execute(stmt)
         return result.rowcount > 0
 
-
-
-
+    async def get_status(self, order_id: UUID) -> str | None:
+        stmt = select(OrderModel.status).where(
+            OrderModel.id == order_id,
+            OrderModel.is_deleted == False,
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
