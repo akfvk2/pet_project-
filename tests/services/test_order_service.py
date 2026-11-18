@@ -13,6 +13,10 @@ from src.models.product import ProductModel
 from src.services.order_inventory_service import OrderInventoryService
 from src.exceptions.already_exists import AlreadyExistsException
 from src.mappers.order_item_mapper import OrderItemMapper
+from unittest.mock import AsyncMock, Mock
+from decimal import Decimal
+from src.models.order_item import OrderItemModel
+from src.models.order import OrderModel, OrderStatus
 
 @pytest_asyncio.fixture
 async def product(db_session):
@@ -55,6 +59,39 @@ class TestCreate:
             await service.create_order(make_order_create(product.id, 100))
         await db_session.refresh(product)
         assert product.stock == 10
+
+    async def test_create_calls_mappers(self, product, db_session):
+        inventory_service = Mock()
+        inventory_service.reserve_stock = AsyncMock(
+            return_value={product.id: product})
+        created_order = Mock()
+        order_repo = Mock()
+        order_repo.create = AsyncMock(return_value=created_order)
+        mapper_item = Mock()
+        expected_items = [
+            OrderItemModel(
+                product_id=product.id,
+                quantity=3,
+                price=product.price,)]
+        mapper_item.to_models.return_value = expected_items
+        mapper_item.to_models.return_value = expected_items
+        mapper = Mock()
+        expected_result = Mock()
+        mapper.to_read.return_value = expected_result
+        service = OrderService(
+            order_repo=order_repo,
+            inventory_service=inventory_service,
+            mapper=mapper,
+            mapper_item=mapper_item)
+        order_create = make_order_create(product.id, 3)
+        result = await service.create_order(order_create)
+        inventory_service.reserve_stock.assert_awaited_once_with(order_create.items)
+        mapper_item.to_models.assert_called_once_with(
+            order_create.items,
+            {product.id: product})
+        order_repo.create.assert_awaited_once()
+        mapper.to_read.assert_called_once_with(created_order)
+        assert result is expected_result
 
 
 class TestCancel:
