@@ -18,7 +18,7 @@ class OrderService:
     async def create_order(self, order_in: OrderCreate) -> OrderRead:
         products_by_id = await self.inventory_service.reserve_stock(order_in.items)
         items = self.mapper_item.to_models(order_in.items, products_by_id)
-        order = OrderModel(id=uuid4(), items=items)
+        order = self.mapper.to_model(items)
         created_order = await self.order_repo.create(order)
         return self.mapper.to_read(created_order)
 

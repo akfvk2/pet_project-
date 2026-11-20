@@ -93,6 +93,25 @@ class TestCreate:
         mapper.to_read.assert_called_once_with(created_order)
         assert result is expected_result
 
+class TestGetById:
+    async def test_get_by_id_calls_mapper(self):
+        order_id = uuid4()
+        order = Mock()
+        order_repo = Mock()
+        order_repo.get_by_id = AsyncMock(return_value=order)
+        mapper = Mock()
+        expected_result = Mock()
+        mapper.to_read.return_value = expected_result
+        service = OrderService(
+            order_repo=order_repo,
+            inventory_service=Mock(),
+            mapper=mapper,
+            mapper_item=Mock(),)
+        result = await service.get_by_id(order_id)
+        order_repo.get_by_id.assert_awaited_once_with(order_id)
+        mapper.to_read.assert_called_once_with(order)
+        assert result is expected_result
+
 
 class TestCancel:
     async def test_cancel_restores_stock(self, service, product, db_session):
