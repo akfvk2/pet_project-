@@ -3,7 +3,7 @@ from fastapi.responses import ORJSONResponse
 from starlette.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from fastapi import APIRouter
-from src.routers.v1 import users, authors, students, bookings, rooms
+from src.routers.v1 import users, authors, students, bookings, rooms, orders, products
 from src.exceptions.base import AppException, app_exception_handler
 import asyncio
 import contextlib
@@ -35,6 +35,8 @@ def _build_api_v1_router() -> APIRouter:
     api_v1_router.include_router(students.router, prefix="/students", tags=["students"])
     api_v1_router.include_router(bookings.router, prefix="/bookings", tags=["bookings"])
     api_v1_router.include_router(rooms.router, prefix="/rooms", tags=["rooms"])
+    api_v1_router.include_router(orders.router, prefix="/orders", tags=["orders"])
+    api_v1_router.include_router(products.router, prefix="/products", tags=["products"])
     return api_v1_router
 
 

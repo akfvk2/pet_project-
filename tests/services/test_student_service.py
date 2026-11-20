@@ -113,7 +113,7 @@ class TestStudentService:
                 uuid4(),
                 StudentUpdate(name="Обновлённый", course={"title": "Django"}))
 
-    async def test_register_student_created_writes_outbox_event(db_session):
+    async def test_register_student_created_writes_outbox_event(self, db_session):
         student = Students(id=uuid4(), name="Ivan", age=20, email="ivan@test.com", phone="+79990000000")
         service = StudentEventService(OutboxService(OutboxEventRepository(db_session)))
         service.register_student_created(student)
